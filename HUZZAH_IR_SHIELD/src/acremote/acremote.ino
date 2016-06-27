@@ -8,7 +8,7 @@
 #include <IRremoteESP8266.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
+#include <ESP8266SSDP.h>
 #include <Adafruit_TCS34725.h>
 
 const char* ssid     = "MM-Guest";
@@ -24,7 +24,7 @@ const int color_scl     = 5;
 int temp_enabled = 0;
 int color_enabled = 0;
 
-ESP8266WebServer server(80);
+ESP8266WebServer HTTP(80);
 IRsend irsend(irLedPin);
 IRrecv irrecv(irSensorPin);
 DHT dht(tempSensorPin, DHT11);
@@ -148,14 +148,14 @@ void  dumpCode (decode_results *results)
 }
 
 void handleRoot() {
- server.send(200, "text/html", "<html><head> <title>ESP8266 Demo</title></head><body><h1>Hello from ESP8266, you can send NEC encoded IR signals from here!</h1><p><a href=\"ir?code=16769055\">Send 0xFFE01F</a></p><p><a href=\"ir?code=16429347\">Send 0xFAB123</a></p><p><a href=\"ir?code=16771222\">Send 0xFFE896</a></p></body></html>");
+ HTTP.send(200, "text/html", "<html><head> <title>ESP8266 Demo</title></head><body><h1>Hello from ESP8266, you can send NEC encoded IR signals from here!</h1><p><a href=\"ir?code=16769055\">Send 0xFFE01F</a></p><p><a href=\"ir?code=16429347\">Send 0xFAB123</a></p><p><a href=\"ir?code=16771222\">Send 0xFFE896</a></p></body></html>");
 }
 
 void handleIr(){
-  for (uint8_t i=0; i<server.args(); i++){
-    if(server.argName(i) == "code")
+  for (uint8_t i=0; i<HTTP.args(); i++){
+    if(HTTP.argName(i) == "code")
     {
-      unsigned long code = server.arg(i).toInt();
+      unsigned long code = HTTP.arg(i).toInt();
       Serial.print("Sending 32Khz NEC code: ");
       Serial.println(code);
       irsend.sendNEC(code, 32);
@@ -167,16 +167,16 @@ void handleIr(){
 void handleNotFound(){
   String message = "File Not Found\n\n";
   message += "URI: ";
-  message += server.uri();
+  message += HTTP.uri();
   message += "\nMethod: ";
-  message += (server.method() == HTTP_GET)?"GET":"POST";
+  message += (HTTP.method() == HTTP_GET)?"GET":"POST";
   message += "\nArguments: ";
-  message += server.args();
+  message += HTTP.args();
   message += "\n";
-  for (uint8_t i=0; i<server.args(); i++){
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  for (uint8_t i=0; i<HTTP.args(); i++){
+    message += " " + HTTP.argName(i) + ": " + HTTP.arg(i) + "\n";
   }
-  server.send(404, "text/plain", message);
+  HTTP.send(404, "text/plain", message);
 }
 
 void setup() {
@@ -202,12 +202,23 @@ void setup() {
   } else {
     Serial.println("No TCS34725 color sensor found");
   }
+  WiFi.mode(WIFI_STA); /* client mode */
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-  }
+  } 
+
+  byte macInt[6];
+  String macStr;
+  WiFi.macAddress(macInt);
+  macStr.concat (String(macInt[5], HEX));
+  macStr.concat (String(macInt[4], HEX));
+  macStr.concat (String(macInt[3], HEX));
+  macStr.concat (String(macInt[2], HEX));
+  macStr.concat (String(macInt[1], HEX));
+  macStr.concat (String(macInt[0], HEX));
 
   Serial.println("");
   Serial.println("WiFi connected");
@@ -218,14 +229,35 @@ void setup() {
   Serial.print("Signal Strength (RSSI): ");
   Serial.print(WiFi.RSSI());
   Serial.println("dBm");
+  Serial.print("MAC address: ");
+  Serial.println(macStr);
 
-  server.on("/", handleRoot);
-  server.on("/ir", handleIr);
-  server.on("/inline", [](){
-    server.send(200, "text/plain", "this works as well");
+  Serial.printf("Starting HTTP...\n");
+  HTTP.on("/", handleRoot);
+  HTTP.on("/ir", handleIr);
+  HTTP.on("/index.html", HTTP_GET, [](){
+    HTTP.send(200, "text/plain", "Hello World!");
   });
-  server.onNotFound(handleNotFound);
-  server.begin();
+  HTTP.on("/description.xml", HTTP_GET, [](){
+    SSDP.schema(HTTP.client());
+  });
+
+  Serial.printf("Starting SSDP...\n");
+  SSDP.setSchemaURL("description.xml");
+  SSDP.setHTTPPort(80);
+  SSDP.setName("WiFi IR Remote");
+  SSDP.setSerialNumber(macStr);
+  SSDP.setURL("index.html");
+  SSDP.setModelName("Custom WiFi based IR transmitter");
+  SSDP.setModelNumber("v1,0");
+  SSDP.setModelURL("https://github.com/cj8scrambler/eagle/tree/master/HUZZAH_IR_SHIELD/hw");
+  SSDP.setManufacturer("cj8scrambler");
+  SSDP.setManufacturerURL("https://github.com/cj8scrambler/eagle/tree/master/HUZZAH_IR_SHIELD");
+  SSDP.setDeviceType("urn:schemas-upnp-org:device:WifiRemote:1");
+  SSDP.begin();
+
+  HTTP.onNotFound(handleNotFound);
+  HTTP.begin();
 
 }
 
@@ -266,5 +298,5 @@ void loop() {
     }
   }
   
-  server.handleClient();
+  HTTP.handleClient();
 }
