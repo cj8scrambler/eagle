@@ -10,16 +10,20 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266SSDP.h>
 #include <Adafruit_TCS34725.h>
+#include <Adafruit_NeoPixel.h>
 
 const char* ssid     = "MM-Guest";
 const char* password = "GuestAccess2016";
 
+const int buttonPin     = 0;
 const int irLedPin      = 2;
-const int irSensorPin   = 13;
+const int color_sda     = 4;
 const int motionPin     = 5;
 const int tempSensorPin = 12;
-const int color_sda     = 4;
-const int color_scl     = 5;
+const int irSensorPin   = 13;
+const int color_scl     = 14;
+const int color_led     = 15; /* no such pin number! */
+const int neoPixelPin   = 2;  /* conflicts with IR PIN; can't use 16 */
 
 int temp_enabled = 0;
 int color_enabled = 0;
@@ -29,6 +33,7 @@ IRsend irsend(irLedPin);
 IRrecv irrecv(irSensorPin);
 DHT dht(tempSensorPin, DHT11);
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS34725_GAIN_1X);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, neoPixelPin, NEO_GRB + NEO_KHZ800);
 
 void  ircode (decode_results *results)
 {
@@ -184,6 +189,8 @@ void setup() {
   delay(100);
 
   Wire.pins(color_sda, color_scl); /* 4 = SDA / 14 = SCL */
+  strip.begin();
+  strip.show();
 
   // We start by connecting to a WiFi network
 
@@ -192,6 +199,10 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
+  pinMode(buttonPin, INPUT);
+  pinMode(color_led, OUTPUT);
+  digitalWrite(color_led, 1);
+  
   irsend.begin();
   irrecv.enableIRIn();
   dht.begin();
@@ -258,10 +269,25 @@ void setup() {
 
   HTTP.onNotFound(handleNotFound);
   HTTP.begin();
+}
 
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
 uint16_t counter=0;
+uint8_t color=0;
 
 void loop() {
   decode_results  results;        // Somewhere to store the results
@@ -284,19 +310,35 @@ void loop() {
     }
     
     if (color_enabled) {
-      tcs.getRawData(&r, &g, &b, &c);
-      colorTemp = tcs.calculateColorTemperature(r, g, b);
-      lux = tcs.calculateLux(r, g, b);
+      if (!digitalRead(buttonPin)) {
+        Serial.println("Button Pressed");
+        digitalWrite(color_led, 0);
+      
+        tcs.getRawData(&r, &g, &b, &c);
+        colorTemp = tcs.calculateColorTemperature(r, g, b);
+        lux = tcs.calculateLux(r, g, b);
   
-      Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
-      Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
-      Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
-      Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
-      Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
-      Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
-      Serial.println(" ");
+        Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
+        Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
+        Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
+        Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
+        Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
+        Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
+        Serial.println(" ");
+        strip.setPixelColor(0, r, g, b);
+        strip.show();
+      } else {
+        digitalWrite(color_led, 1);
+      }
     }
   }
-  
+
+  Serial.print("going set led to:");
+  Serial.println(Wheel(color));
+
+  strip.setPixelColor(0, Wheel(color++));
+  strip.show();
+  delay(20);
+
   HTTP.handleClient();
 }
