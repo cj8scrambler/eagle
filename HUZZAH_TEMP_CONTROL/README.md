@@ -17,44 +17,31 @@ Components
 
 ###UI States
  
-``` 
-  ###.# - Idle mode
-    Status LED - red/blue for heat/cool mode
-    shows current temp
-    button press shows setpoint for 2 seconds after release
-    while holding button, rotary changes setpoint
-    hold button for 5 seconds to go to settings mode
+  * ###.# - Idle mode
+    * Status LED - red/blue for heat/cool mode
+    * shows current temp
+    * button press shows setpoint for 2 seconds after release
+    * while holding button, rotary changes setpoint
+    * hold button for 5 seconds to go to settings mode
 
-  Settings Mode
-    button press advances to the next state
-    hold button for 5 seconds to go to idle mode
-    15 second idle timeout returns to idle mode
+  * Settings Mode
+    * button press advances to the next state
+    * hold button for 5 seconds to go to idle mode
+    * 15 second idle timeout returns to idle mode
 
-    HEAT - Heat mode
-      Status LED flashes red
-      rotary changes setpoint temp.
-    COOL - Cool mode
-      Status LED flashes blue
-      rotary changes setpoint temp.
-    WIFI - select SSID
-      Wifi LED flashes orange
-      rotary scrolls through SSID list which is scrolling across dislay
-    ___A - set passwd
-      Wifi LED solid orange
-      rotary selects char A-Za-z0-9[puncts]
-      button chooses char and shifts display left
-      hold button for 5 seconds to set password
-      15 second idle timeout cancels password change and returns to idle mode
-``` 
+    * HEAT - Heat mode
+      * Status LED flashes red
+      * rotary changes setpoint temp.
+    * COOL - Cool mode
+      * Status LED flashes blue
+      * rotary changes setpoint temp.
 
 ###Wifi LED
   * solid green  - Connected and communicating with server
   * flash green  - Connected and attemting to communicate with server
   * solid blue   - Failed to authenticate
-  * flash red    - Attempting to connect to network
-  * solid red    - NO SSID found
-  * flash orange - currently selecting SSID
-  * solid orange - currently setting password (see above)
+  * solid orange - Attempting to connect to network
+  * solid red    - Wifi disabled
 
 ###Status LED
   * solid red    - Running in heat mode
