@@ -36,13 +36,17 @@ extern void ntp_setup();
 #define VILOET       0xff00ff
 #define WHITE        0xffffff
 
+#define HYS_MAX           9.9
+#define MIN_COMPRESSOR_SECONDS  180
 #define NUM_DATA_SAMPLES  512
 
 typedef enum {
   UI_IDLE,
   UI_IDLE_SHOW_SETPOINT,
-  UI_SET_SETPOINT_HEAT,
-  UI_SET_SETPOINT_COOL,
+  UI_SET_MODE,
+  UI_SET_SETPOINT,
+  UI_SET_HYST,
+  UI_SET_COMP,
 } ui_state;
 
 typedef enum {
@@ -59,23 +63,30 @@ typedef struct {
 
 typedef struct {
   uint32_t timestamp;
+  uint8_t enabled;
   float temp;
   float setpoint;
+  float hyst;
   uint8_t mode;
+  uint8_t comp_mode;
 } datapoint;
 
 const int buttonPin     = 0;
 const int neoPixelPin   = 2;
 const int disp_sda      = 4;
 const int disp_scl      = 5;
-const int unused        = 12;
+const int relayPin      = 12;
 const int rotary1Pin    = 13;
 const int rotary2pin    = 14;
 
 float currentTemp = 25.0;
-float heatSetpoint, coolSetpoint;
-ui_state ui = UI_IDLE;
+float setpoint;
 temp_mode mode = MODE_HEAT;
+float hysteresis;
+bool comp_mode;
+
+ui_state ui = UI_IDLE;
+
 
 volatile int idleTime = 0;
 volatile int buttonEvent = 0;
@@ -102,10 +113,14 @@ char *uiToString(ui_state current)
     return "Idle";
   case UI_IDLE_SHOW_SETPOINT:
     return "Idle: Showing setpoint";
-  case UI_SET_SETPOINT_HEAT:
-    return "Change heat setpoint";
-  case UI_SET_SETPOINT_COOL:
-    return "Change cool setpoint";
+  case UI_SET_MODE:
+    return "Change mode";
+  case UI_SET_SETPOINT:
+    return "Change setpoint";
+  case UI_SET_HYST:
+    return "Change hysteresis";
+  case UI_SET_COMP:
+    return "Change compressor mode";
   default:
     return "Unkown";
   }
@@ -118,13 +133,11 @@ void handleRoot() {
   message += uiToString(ui);
   if (mode == MODE_HEAT) {
     message += "<p>\nCurrent Mode: Heat<p>\n";
-    message += "Current Setpoint: ";
-    message += heatSetpoint;
   } else {
     message += "<p>\nCurrent Mode: Cool<p>\n";
-    message += "Current Setpoint: ";
-    message += coolSetpoint;
   }
+  message += "Current Setpoint: ";
+  message += setpoint;
   message += "<p>\n";
   HTTP.send(200, "text/html", message);
 }
@@ -233,17 +246,14 @@ void handleUIEvent(int event) {
     if (event == BUTTON_PRESSED)
       ui = UI_IDLE_SHOW_SETPOINT;
     else if (event == BUTTON_TIMER_EXPIRE)
-      ui = UI_SET_SETPOINT_HEAT;
+      ui = UI_SET_MODE;
     break;
   case UI_IDLE_SHOW_SETPOINT:
     if (!digitalRead(buttonPin)) {
       if (event == SCROLL) {
         os_timer_disarm(&buttonTimer);
         cancelIdleTimer();
-        if (mode == MODE_HEAT)
-          heatSetpoint += scrollDelta/10;
-        else
-          coolSetpoint += scrollDelta/10;
+        setpoint += scrollDelta/10;
         scrollDelta = 0;
       }
     }
@@ -254,62 +264,96 @@ void handleUIEvent(int event) {
     else if (event == UI_TIMER_2S_EXPIRE)
       ui = UI_IDLE;
     else if (event == BUTTON_TIMER_EXPIRE)
-      ui = UI_SET_SETPOINT_HEAT;
+      ui = UI_SET_MODE;
     break;
-  case UI_SET_SETPOINT_HEAT:
+  case UI_SET_MODE:
     if (event == SCROLL) {
       restartIdleTimer();
-      heatSetpoint += scrollDelta/10;
+      mode = (mode==MODE_HEAT)?MODE_COOL:MODE_HEAT;
       scrollDelta = 0;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
-      ui = UI_SET_SETPOINT_COOL;
+      ui = UI_SET_SETPOINT;
     } else if (event == BUTTON_TIMER_EXPIRE) {
       cancelIdleTimer();
       ui = UI_IDLE;
     } else if (event == UI_TIMER_10S_EXPIRE)
       ui = UI_IDLE;
-  case UI_SET_SETPOINT_COOL:
+    break;
+  case UI_SET_SETPOINT:
     if (event == SCROLL) {
       restartIdleTimer();
-      coolSetpoint += scrollDelta/10;
+      setpoint += scrollDelta;
       scrollDelta = 0;
     } else if (event == BUTTON_PRESSED) {
-      cancelIdleTimer();
-      ui = UI_IDLE;
-    } else if (event == BUTTON_TIMER_EXPIRE) {
       restartIdleTimer();
+      ui = UI_SET_HYST;
+    } else if (event == BUTTON_TIMER_EXPIRE) {
+      cancelIdleTimer();
       ui = UI_IDLE;
     } else if (event == UI_TIMER_10S_EXPIRE)
       ui = UI_IDLE;
+    break;
+  case UI_SET_HYST:
+    if (event == SCROLL) {
+      restartIdleTimer();
+      hysteresis += scrollDelta;
+      scrollDelta = 0;
+      if (hysteresis < 0)
+        hysteresis = 0;
+      else if (hysteresis > HYS_MAX)
+        hysteresis = HYS_MAX;
+    } else if (event == BUTTON_PRESSED) {
+      restartIdleTimer();
+      ui = UI_SET_COMP;
+    } else if (event == BUTTON_TIMER_EXPIRE) {
+      cancelIdleTimer();
+      ui = UI_IDLE;
+    } else if (event == UI_TIMER_10S_EXPIRE)
+      ui = UI_IDLE;
+    break;
+  case UI_SET_COMP:
+    if (event == SCROLL) {
+      restartIdleTimer();
+      comp_mode = !comp_mode;
+      scrollDelta = 0;
+    } else if (event == BUTTON_PRESSED) {
+      restartIdleTimer();
+      ui = UI_SET_MODE;
+    } else if (event == BUTTON_TIMER_EXPIRE) {
+      cancelIdleTimer();
+      ui = UI_IDLE;
+    } else if (event == UI_TIMER_10S_EXPIRE)
+      ui = UI_IDLE;
+    break;
   }
 
   /* now update the display accordingly */
   switch (ui)
   {
   case UI_IDLE:
-    if (mode == MODE_HEAT)
-      updateStatusLED(STATUS_LED, RED, false);
-    else
-      updateStatusLED(STATUS_LED, BLUE, false);
+    updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, false);
     snprintf(ui_string, 9, "%3.1f", currentTemp);
     break;
   case UI_IDLE_SHOW_SETPOINT:
-    if (mode == MODE_HEAT) {
-      snprintf(ui_string, 9, "%3.1f", heatSetpoint);
-      updateStatusLED(STATUS_LED, RED, true);
-    } else {
-      snprintf(ui_string, 9, "%3.1f", coolSetpoint);
-      updateStatusLED(STATUS_LED, BLUE, true);
-    }
+    snprintf(ui_string, 9, "%3.1f", setpoint);
+    updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, true);
     break;
-  case UI_SET_SETPOINT_HEAT:
-    updateStatusLED(STATUS_LED, RED, true);
-    snprintf(ui_string, 9, "%3.1f", heatSetpoint);
+  case UI_SET_MODE:
+    updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, true);
+    snprintf(ui_string, 9, "%s", (mode==MODE_HEAT)?"HEAT":"COOL");
     break;
-  case UI_SET_SETPOINT_COOL:
-    updateStatusLED(STATUS_LED, BLUE, true);
-    snprintf(ui_string, 9, "%3.1f", coolSetpoint);
+  case UI_SET_SETPOINT:
+    updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, true);
+    snprintf(ui_string, 9, "%3.1f", setpoint);
+    break;
+  case UI_SET_HYST:
+    updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, true);
+    snprintf(ui_string, 9, "H %1.1f", hysteresis);
+    break;
+  case UI_SET_COMP:
+    updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, true);
+    snprintf(ui_string, 9, "%s", comp_mode?"COMP":"REG");
     break;
   default:
     snprintf(ui_string, 9, "???");
@@ -386,6 +430,9 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, 0);
+
   os_timer_setfn(&buttonTimer, buttonTimerCallback, NULL);
   os_timer_setfn(&blinkTimer, blinkTimerCallback, NULL);
   os_timer_setfn(&idleTimer, idleTimerCallback, NULL);
@@ -456,12 +503,12 @@ void uploadCloudData() {
 void logDatapoint() {
   if (timeStatus() == timeSet) {
     dataLog[writeIndex].timestamp = now();
+    dataLog[writeIndex].enabled = digitalRead(relayPin);
     dataLog[writeIndex].temp = currentTemp;
-    if (mode == MODE_HEAT)
-      dataLog[writeIndex].setpoint = heatSetpoint;
-    else
-      dataLog[writeIndex].setpoint = coolSetpoint;
     dataLog[writeIndex].mode = mode;
+    dataLog[writeIndex].setpoint = setpoint;
+    dataLog[writeIndex].hyst = hysteresis;
+    dataLog[writeIndex].comp_mode = comp_mode;
 
     writeIndex = (writeIndex + 1) % NUM_DATA_SAMPLES;
     if (writeIndex == readIndex)
@@ -474,11 +521,51 @@ void logDatapoint() {
   }
 }
 
+void setPower(bool enable) {
+  static time_t lasttime;
+  time_t deltatime;
+
+  if (comp_mode) {
+    deltatime = now() - lasttime;
+    if (deltatime < MIN_COMPRESSOR_SECONDS)
+      return;
+  }
+
+  if (digitalRead(relayPin) != enable) {
+    digitalWrite(relayPin, enable);
+    lasttime = now();
+  }
+}
+
+float getTrippoint(void) {
+
+  if (digitalRead(relayPin)) {
+    if (mode == MODE_HEAT)
+      return (setpoint + hysteresis);
+    else
+      return (setpoint - hysteresis);
+  } else
+      return (setpoint);
+
+}
+
 void loop() {
+  float trippoint;
   long newKnob, oldKnob = 0;
   int color=0;
 
   currentTemp = analogRead(A0);
+  trippoint = getTrippoint();
+  if (mode == MODE_HEAT)
+    if (currentTemp < trippoint)
+      setPower(1);
+    else
+      setPower(0);
+  else
+    if (currentTemp > trippoint)
+      setPower(1);
+    else
+      setPower(0);
   logDatapoint();
 
   newKnob = knob.read();

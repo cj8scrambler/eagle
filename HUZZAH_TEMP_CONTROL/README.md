@@ -29,12 +29,21 @@ Components
     * hold button for 5 seconds to go to idle mode
     * 15 second idle timeout returns to idle mode
 
-    * HEAT - Heat mode
-      * Status LED flashes red
+    * Set Mode: HEAT or COOL
+      * Status LED flashes red (HEAT) or blue (COOL)
+      * rotary changes mode
+    * Set Setpoint:
+      * Status LED flashes red (HEAT) or blue (COOL)
       * rotary changes setpoint temp.
-    * COOL - Cool mode
-      * Status LED flashes blue
-      * rotary changes setpoint temp.
+    * Set Hysterisis:
+      * Status LED flashes red (HEAT) or blue (COOL)
+      * rotary changes hysteresis temp (0 - 9.9)
+        * In cool mode: device turns on above setpoint and turns off at (setpoint - hysteresis)
+        * In heat mode: device turns on below setpoint and turns off at (setpoint + hysteresis)
+    * Set Compressor Mode:
+      * Status LED flashes red (HEAT) or blue (COOL)
+      * rotary changes mode (compressor mode or regular mode)
+        * In compressor mode, a 3 minute minimum on or off time is enforced
 
 ###Wifi LED
   * solid green  - Connected and communicating with server
