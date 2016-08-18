@@ -18,7 +18,7 @@ Components
 ###UI States
  
   * ###.# - Idle mode
-    * Status LED - red/blue for heat/cool mode
+    * Status LED - red/blue for heat/cool mode; flashing is off; solid is on
     * shows current temp
     * button press shows setpoint for 2 seconds after release
     * while holding button, rotary changes setpoint
@@ -30,30 +30,29 @@ Components
     * 15 second idle timeout returns to idle mode
 
     * Set Mode: HEAT or COOL
-      * Status LED flashes red (HEAT) or blue (COOL)
       * rotary changes mode
     * Set Setpoint:
-      * Status LED flashes red (HEAT) or blue (COOL)
       * rotary changes setpoint temp.
     * Set Hysterisis:
-      * Status LED flashes red (HEAT) or blue (COOL)
       * rotary changes hysteresis temp (0 - 9.9)
         * In cool mode: device turns on above setpoint and turns off at (setpoint - hysteresis)
         * In heat mode: device turns on below setpoint and turns off at (setpoint + hysteresis)
     * Set Compressor Mode:
-      * Status LED flashes red (HEAT) or blue (COOL)
       * rotary changes mode (compressor mode or regular mode)
         * In compressor mode, a 3 minute minimum on or off time is enforced
 
-###Wifi LED
-  * solid green  - Connected and communicating with server
-  * flash green  - Connected and attemting to communicate with server
-  * solid blue   - Failed to authenticate
-  * solid orange - Attempting to connect to network
-  * solid red    - Wifi disabled
-
 ###Status LED
+  * off          - Starting up
   * solid red    - Running in heat mode
-  * flash red    - Setting heat setpoing
   * solid blue   - Running in cool mode
-  * flash blue   - Setting cool setpoing
+
+###Wifi LED
+  * solid red    - Wifi disabled
+  * flash orange - Attempting to connect to network
+  * solid orange - Connected to wifi and no time sync
+  * solid green  - Connected and time sync'ed
+
+###Relay LED
+  * off          - Relay off
+  * solid red    - Relay on in heat mode
+  * solid blue   - Relay on in cool mode

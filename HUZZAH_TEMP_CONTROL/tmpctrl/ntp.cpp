@@ -2,6 +2,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
+#include "ui.h"
+
 // NTP Servers:
 static const char ntpServerName[] = "us.pool.ntp.org";
 //static const char ntpServerName[] = "time.nist.gov";
@@ -9,7 +11,7 @@ static const char ntpServerName[] = "us.pool.ntp.org";
 //static const char ntpServerName[] = "time-b.timefreq.bldrdoc.gov";
 //static const char ntpServerName[] = "time-c.timefreq.bldrdoc.gov";
 
-const int timeZone = 0;     // Central European Time
+const int timeZone = 0;     // GMT
 //const int timeZone = -5;  // Eastern Standard Time (USA)
 //const int timeZone = -4;  // Eastern Daylight Time (USA)
 //const int timeZone = -8;  // Pacific Standard Time (USA)
@@ -19,11 +21,14 @@ WiFiUDP Udp;
 unsigned int localPort = 8888;  // local port to listen for UDP packets
 
 time_t getNtpTime();
-void digitalClockDisplay();
-void printDigits(int digits);
 void sendNTPpacket(IPAddress &address);
 
-void ntp_setup()
+void ntpDisable(void)
+{
+  setSyncProvider(NULL);
+}
+
+void ntpSetup(void)
 {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.print("Error: Wifi is not connected\n");
@@ -61,10 +66,12 @@ time_t getNtpTime()
       secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
       secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
       secsSince1900 |= (unsigned long)packetBuffer[43];
+      updateStatusLED(WIFI_LED, GREEN, false);
       return secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
     }
   }
   Serial.println("No NTP Response :-(");
+  updateStatusLED(WIFI_LED, ORANGE, false);
   return 0; // return 0 if unable to get the time
 }
 
