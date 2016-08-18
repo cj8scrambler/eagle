@@ -40,12 +40,6 @@ typedef struct {
   bool blink;
 } led;
 
-extern float currentTemp;
-extern float setpoint;
-extern temp_mode mode;
-extern float hysteresis;
-extern bool comp_mode;
-
 static ui_state ui = UI_IDLE;
 
 static volatile int idleTime = 0;

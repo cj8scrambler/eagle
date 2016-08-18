@@ -3,18 +3,18 @@
 */
 
 #include <Time.h>
-
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266SSDP.h>
 
 #include "tmpctrl.h"
 #include "credentials.h"
 #include "ui.h"
 #include "ntp.h"
+#include "http.h"
 
 #define MIN_COMPRESSOR_SECONDS  180
 #define NUM_DATA_SAMPLES  512
+
+#define C_TO_F(c)  (((c) * 1.8) + 32.0)
 
 typedef struct {
   uint32_t timestamp;
@@ -32,41 +32,8 @@ temp_mode mode = MODE_HEAT;
 float hysteresis;
 bool comp_mode;
 
-datapoint dataLog[NUM_DATA_SAMPLES];
-int readIndex=0, writeIndex=0;
-
-ESP8266WebServer HTTP(80);
-
-void handleRoot() {
- String message =  "<html><head><title>Wifi Temp Controller</title></head><body>Current Temp: ";
-  message += currentTemp;
-  message += "<p>\nCurrent State: ";
-  message += uiToString();
-  if (mode == MODE_HEAT) {
-    message += "<p>\nCurrent Mode: Heat<p>\n";
-  } else {
-    message += "<p>\nCurrent Mode: Cool<p>\n";
-  }
-  message += "Current Setpoint: ";
-  message += setpoint;
-  message += "<p>\n";
-  HTTP.send(200, "text/html", message);
-}
-
-void handleNotFound(){
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += HTTP.uri();
-  message += "\nMethod: ";
-  message += (HTTP.method() == HTTP_GET)?"GET":"POST";
-  message += "\nArguments: ";
-  message += HTTP.args();
-  message += "\n";
-  for (uint8_t i=0; i<HTTP.args(); i++){
-    message += " " + HTTP.argName(i) + ": " + HTTP.arg(i) + "\n";
-  }
-  HTTP.send(404, "text/plain", message);
-}
+static datapoint dataLog[NUM_DATA_SAMPLES];
+static int readIndex=0, writeIndex=0;
 
 int checkWifi(void)
 {
@@ -74,6 +41,9 @@ int checkWifi(void)
   if (WiFi.status() == WL_CONNECTED) {
     return 0;
   }
+
+  Serial.print("Connecting to ");
+  Serial.println(defaultSSID);
 
   updateStatusLED(WIFI_LED, ORANGE, true);
 
@@ -93,40 +63,6 @@ int checkWifi(void)
 
   updateStatusLED(WIFI_LED, ORANGE, false);
   ntpSetup();
-
-  byte macInt[6];
-  String macStr;
-  WiFi.macAddress(macInt);
-  macStr.concat (String(macInt[5], HEX));
-  macStr.concat (String(macInt[4], HEX));
-  macStr.concat (String(macInt[3], HEX));
-  macStr.concat (String(macInt[2], HEX));
-  macStr.concat (String(macInt[1], HEX));
-  macStr.concat (String(macInt[0], HEX));
-
-  SSDP.setSchemaURL("description.xml");
-  SSDP.setHTTPPort(80);
-  SSDP.setName("WiFi IR Remote");
-  SSDP.setSerialNumber(macStr);
-  SSDP.setURL("index.html");
-  SSDP.setModelName("Custom WiFi based IR transmitter");
-  SSDP.setModelNumber("v1,0");
-  SSDP.setModelURL("https://github.com/cj8scrambler/eagle/tree/master/HUZZAH_IR_SHIELD/hw");
-  SSDP.setManufacturer("cj8scrambler");
-  SSDP.setManufacturerURL("https://github.com/cj8scrambler/eagle/tree/master/HUZZAH_IR_SHIELD");
-  SSDP.setDeviceType("urn:schemas-upnp-org:device:WifiRemote:1");
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-  Serial.print("Signal Strength (RSSI): ");
-  Serial.print(WiFi.RSSI());
-  Serial.println("dBm");
-  Serial.print("MAC address: ");
-  Serial.println(macStr);
 
   return 0;
 }
@@ -191,6 +127,9 @@ float getTrippoint(void) {
 }
 
 void setup() {
+  byte macInt[6];
+  String macStr;
+
   Serial.begin(115200);
   delay(100);
 
@@ -199,37 +138,29 @@ void setup() {
 
   uiSetup();
 
-  // We start by connecting to a WiFi network
   Serial.println();
   Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(defaultSSID);
 
   pinMode(A0, INPUT); /* ADC on LM50 temp sensor */
   
   checkWifi();
 
-  Serial.printf("Starting HTTP...\n");
-  HTTP.on("/", handleRoot);
-  HTTP.on("/index.html", HTTP_GET, [](){
-    HTTP.send(200, "text/plain", "Hello World!");
-  });
-  HTTP.on("/description.xml", HTTP_GET, [](){
-    SSDP.schema(HTTP.client());
-  });
+  WiFi.macAddress(macInt);
+  macStr.concat (String(macInt[5], HEX));
+  macStr.concat (String(macInt[4], HEX));
+  macStr.concat (String(macInt[3], HEX));
+  macStr.concat (String(macInt[2], HEX));
+  macStr.concat (String(macInt[1], HEX));
+  macStr.concat (String(macInt[0], HEX));
+  setupHTTP(macStr);
 
   Serial.printf("Starting SSDP...\n");
-
-  SSDP.begin();
-
-  HTTP.onNotFound(handleNotFound);
-  HTTP.begin();
 }
 
 void loop() {
   float trippoint;
 
-  currentTemp = analogRead(A0);
+  currentTemp = C_TO_F(100.0 * (analogRead(A0) - 0.5));
   trippoint = getTrippoint();
   if (mode == MODE_HEAT)
     if (currentTemp < trippoint)
@@ -247,8 +178,8 @@ void loop() {
 
   if (!checkWifi()) {
     uploadCloudData();
-    HTTP.handleClient();
+    loopHTTP();
   }
 
-  delay(20); /* hopefully get rid of this */
+  //delay(20); /* hopefully get rid of this */
 }

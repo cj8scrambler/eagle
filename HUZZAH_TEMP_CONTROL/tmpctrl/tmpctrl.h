@@ -10,3 +10,10 @@ typedef enum {
 #define relayPin      12
 #define rotary1Pin    13
 #define rotary2pin    14
+
+extern float currentTemp;
+extern float setpoint;
+extern temp_mode mode;
+extern float hysteresis;
+extern bool comp_mode;
+
