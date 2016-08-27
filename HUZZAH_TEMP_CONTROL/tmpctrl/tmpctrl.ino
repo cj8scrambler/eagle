@@ -11,8 +11,6 @@
 #include "ntp.h"
 #include "http.h"
 
-#define TEMP_SAMPLE_INTERVAL    2000 /*mS*/
-#define MIN_COMPRESSOR_SECONDS   180
 #define NUM_DATA_SAMPLES         512
 
 /* Temp in 1/100 degrees */
@@ -29,11 +27,11 @@ typedef struct {
   uint8_t comp_mode;
 } datapoint;
 
-int16_t currentTemp = 2500;
-int16_t setpoint;
+int16_t currentTemp = 7200;
+int16_t setpoint = 6800;
 temp_mode mode = MODE_HEAT;
-int16_t hysteresis;
-bool comp_mode;
+int16_t hysteresis = 200;
+bool comp_mode = 1;
 
 static datapoint dataLog[NUM_DATA_SAMPLES];
 static int readIndex = 0, writeIndex = 0;
@@ -43,15 +41,13 @@ int checkWifi(void)
 {
   int timeout = 20;
   int status = WiFi.status();
-  
+
   if (status == WL_CONNECTED) {
     return 0;
   }
-  Serial.print("problem: status=");
-  Serial.println(status);
-  
+
   Serial.print("Connecting to ");
-  Serial.print("Connecting to ");
+  Serial.print(defaultSSID);
 
   updateStatusLED(WIFI_LED, ORANGE, true);
 
@@ -72,6 +68,16 @@ int checkWifi(void)
   }
 
   updateStatusLED(WIFI_LED, ORANGE, false);
+
+  Serial.println("");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+  Serial.print("Signal Strength (RSSI): ");
+  Serial.print(WiFi.RSSI());
+  Serial.println("dBm");
+
   ntpSetup();
 
   return 0;
@@ -87,26 +93,60 @@ void uploadCloudData() {
 }
 
 void logDatapoint() {
+  int oldIndex;
+
   if (timeStatus() == timeSet) {
-    dataLog[writeIndex].timestamp = now();
-    dataLog[writeIndex].enabled = digitalRead(relayPin);
-    dataLog[writeIndex].temp = currentTemp;
-    dataLog[writeIndex].mode = mode;
-    dataLog[writeIndex].setpoint = setpoint;
-    dataLog[writeIndex].hyst = hysteresis;
-    dataLog[writeIndex].comp_mode = comp_mode;
+    datapoint newdata = {
+      now(), digitalRead(relayPin), currentTemp,
+      mode, setpoint, hysteresis, comp_mode,
+    };
 
-    writeIndex = (writeIndex + 1) % NUM_DATA_SAMPLES;
-    if (writeIndex == readIndex)
-      readIndex = (readIndex + 1) % NUM_DATA_SAMPLES;
+    oldIndex = writeIndex ? writeIndex - 1 : NUM_DATA_SAMPLES - 1;
+    if (dataLog[oldIndex].enabled != newdata.enabled ||
+ //       dataLog[oldIndex].temp != newdata.temp ||
+        dataLog[oldIndex].mode != newdata.mode ||
+        dataLog[oldIndex].setpoint != newdata.setpoint ||
+        dataLog[oldIndex].hyst != newdata.hyst ||
+        dataLog[oldIndex].comp_mode != newdata.comp_mode) {
+      Serial.print("enabled - old: ");
+      Serial.print(dataLog[oldIndex].enabled);
+      Serial.print("enabled - new: ");
+      Serial.println(newdata.enabled);
 
-    Serial.print("Log data at ");
-    Serial.println(now());
-  } else {
-    Serial.println("Could not log data: no time set");
+      Serial.print("temp - old: ");
+      Serial.print(dataLog[oldIndex].temp);
+      Serial.print("enabled - new: ");
+      Serial.println(newdata.temp);
+
+      Serial.print("mode - old: ");
+      Serial.print(dataLog[oldIndex].mode);
+      Serial.print("enabled - new: ");
+      Serial.println(newdata.mode);
+
+      Serial.print("setpoint - old: ");
+      Serial.print(dataLog[oldIndex].setpoint);
+      Serial.print("enabled - new: ");
+      Serial.println(newdata.setpoint);
+
+      Serial.print("hyst - old: ");
+      Serial.print(dataLog[oldIndex].hyst);
+      Serial.print("enabled - new: ");
+      Serial.println(newdata.hyst);
+
+      memcpy(&dataLog[writeIndex], &newdata, sizeof(datapoint));
+      writeIndex = (writeIndex + 1) % NUM_DATA_SAMPLES;
+      if (writeIndex == readIndex)
+        readIndex = (readIndex + 1) % NUM_DATA_SAMPLES;
+
+      Serial.print("New data logged at ");
+      Serial.println(now());
+    }
   }
 }
 
+bool getPower(void){
+  return (digitalRead(relayPin));
+}
 void setPower(bool enable) {
   static time_t lasttime;
   time_t deltatime;
@@ -180,10 +220,8 @@ void loop() {
   if (currentMillis - previousMillis >= TEMP_SAMPLE_INTERVAL) {
     previousMillis = currentMillis;
     currentTemp = lowpass(LM50_TO_F(analogRead(A0)));
-Serial.print("Wifi status: ");
-Serial.println(WiFi.status());
   }
-  
+
   trippoint = getTrippoint();
   if (mode == MODE_HEAT)
     if (currentTemp < trippoint)

@@ -14,6 +14,14 @@ Components
   * LM50 temp sensor (compatible with BeerBug)
 
 =======
+###Arduino Libraries
+   * ESP8266 Board package: http://arduino.esp8266.com/stable/package_esp8266com_index.json
+   * [TimeLib](http://www.pjrc.com/teensy/td_libs_Time.html)
+   * [Encoder](http://www.pjrc.com/teensy/td_libs_Encoder.html)
+   * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
+   * Adafruit GFX
+   * Adafruit LEDBackpack
+=======
 
 ###UI States
  

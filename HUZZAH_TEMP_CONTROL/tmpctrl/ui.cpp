@@ -23,7 +23,6 @@ extern "C" {
 #define SCROLL              5
 
 #define NUM_LEDS            3
-#define HYS_MAX           9.9
 
 typedef enum {
   UI_IDLE,
@@ -117,7 +116,7 @@ static void updateDisplay(char *data) {
   int led=3;
   int pos=strlen(data)-1;
   bool dot=false;
-  
+
   if (pos < 1 || pos > 8) {
     Serial.println("Error: invalid string length");
     return;
@@ -182,6 +181,10 @@ static void handleUIEvent(int event) {
     if (event == SCROLL) {
       restartIdleTimer();
       setpoint += scrollDelta;
+      if (setpoint < SETPOINT_MIN)
+        setpoint = SETPOINT_MIN;
+      else if (setpoint > SETPOINT_MAX)
+        setpoint = SETPOINT_MAX;
       scrollDelta = 0;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
@@ -197,10 +200,10 @@ static void handleUIEvent(int event) {
       restartIdleTimer();
       hysteresis += scrollDelta;
       scrollDelta = 0;
-      if (hysteresis < 0)
-        hysteresis = 0;
-      else if (hysteresis > HYS_MAX)
-        hysteresis = HYS_MAX;
+      if (hysteresis < HYSTERESIS_MIN)
+        hysteresis = HYSTERESIS_MIN;
+      else if (hysteresis > HYSTERESIS_MAX)
+        hysteresis = HYSTERESIS_MAX;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
       ui = UI_SET_COMP;
