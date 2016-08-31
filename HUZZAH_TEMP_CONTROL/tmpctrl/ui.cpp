@@ -19,10 +19,11 @@ extern "C" {
 #define BUTTON_PRESSED      2
 #define BUTTON_TIMER_EXPIRE 3
 #define UI_TIMER_2S_EXPIRE  4
-#define UI_TIMER_10S_EXPIRE 4
-#define SCROLL              5
+#define UI_TIMER_10S_EXPIRE 5
+#define SCROLL              6
 
 #define NUM_LEDS            3
+#define UI_TOGGLE_MIN_INTERVAL 75 /*ms*/
 
 typedef enum {
   UI_IDLE,
@@ -44,7 +45,7 @@ static ui_state ui = UI_IDLE;
 
 static volatile int idleTime = 0;
 static volatile int buttonEvent = 0;
-static int scrollDelta = 0;
+static volatile long scrollDelta = 0;
 
 static os_timer_t buttonTimer;
 static os_timer_t blinkTimer;
@@ -82,6 +83,7 @@ static void idleTimerCallback(void *pArg) {
     os_timer_arm(&idleTimer, 8000, 0);
     idleTime = 10;
     handleUIEvent(UI_TIMER_2S_EXPIRE);
+    return;
   }
   idleTime = 0;
   handleUIEvent(UI_TIMER_10S_EXPIRE);
@@ -104,7 +106,7 @@ static void handleButtonPress(void) {
 
   if (pressed) {
     os_timer_arm(&buttonTimer, 5000, 0);
-  } else { 
+  } else {
     os_timer_disarm(&buttonTimer);
   }
   /* BUTTON_RELEASED=1 BUTTON_PRESSED=2 */
@@ -148,11 +150,13 @@ static void handleUIEvent(int event) {
     if (!digitalRead(buttonPin)) {
       if (event == SCROLL) {
         os_timer_disarm(&buttonTimer);
-        cancelIdleTimer();
-        setpoint += scrollDelta/10;
-        scrollDelta = 0;
+        restartIdleTimer();
+        setpoint += 2 * scrollDelta;
+        break;
       }
     }
+    if (event == SCROLL)
+      restartIdleTimer();
     else if (event == BUTTON_PRESSED)
       restartIdleTimer();
     else if (event == BUTTON_RELEASED)
@@ -164,10 +168,15 @@ static void handleUIEvent(int event) {
     break;
   case UI_SET_MODE:
     if (event == SCROLL) {
+      static  unsigned long previousMillis = 0;
+      unsigned long currentMillis = millis();
+
+      if (currentMillis - previousMillis >= UI_TOGGLE_MIN_INTERVAL) {
+        previousMillis = currentMillis;
+        mode = (mode==MODE_HEAT)?MODE_COOL:MODE_HEAT;
+        updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, false);
+      }  
       restartIdleTimer();
-      mode = (mode==MODE_HEAT)?MODE_COOL:MODE_HEAT;
-      updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, false);
-      scrollDelta = 0;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
       ui = UI_SET_SETPOINT;
@@ -180,12 +189,11 @@ static void handleUIEvent(int event) {
   case UI_SET_SETPOINT:
     if (event == SCROLL) {
       restartIdleTimer();
-      setpoint += scrollDelta;
+      setpoint += 2 * scrollDelta;
       if (setpoint < SETPOINT_MIN)
         setpoint = SETPOINT_MIN;
       else if (setpoint > SETPOINT_MAX)
         setpoint = SETPOINT_MAX;
-      scrollDelta = 0;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
       ui = UI_SET_HYST;
@@ -198,8 +206,7 @@ static void handleUIEvent(int event) {
   case UI_SET_HYST:
     if (event == SCROLL) {
       restartIdleTimer();
-      hysteresis += scrollDelta;
-      scrollDelta = 0;
+      hysteresis += 2 * scrollDelta;
       if (hysteresis < HYSTERESIS_MIN)
         hysteresis = HYSTERESIS_MIN;
       else if (hysteresis > HYSTERESIS_MAX)
@@ -215,9 +222,14 @@ static void handleUIEvent(int event) {
     break;
   case UI_SET_COMP:
     if (event == SCROLL) {
+      static  unsigned long previousMillis = 0;
+      unsigned long currentMillis = millis();
+
+      if (currentMillis - previousMillis >= UI_TOGGLE_MIN_INTERVAL) {
+        previousMillis = currentMillis;
+        comp_mode = !comp_mode;
+      }
       restartIdleTimer();
-      comp_mode = !comp_mode;
-      scrollDelta = 0;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
       ui = UI_SET_MODE;
@@ -248,7 +260,7 @@ static void handleUIEvent(int event) {
     snprintf(ui_string, 9, "H %1d.%1d", hysteresis/100, ((abs(hysteresis)+5)%100)/10);
     break;
   case UI_SET_COMP:
-    snprintf(ui_string, 9, "%s", comp_mode?"COMP":"REG");
+    snprintf(ui_string, 9, "%s", comp_mode?"COMP":" REG");
     break;
   default:
     snprintf(ui_string, 9, "???");
@@ -301,24 +313,26 @@ void uiSetup() {
   os_timer_arm(&blinkTimer, 500, 1);
 
   alpha4.begin(0x70);
-
+  updateDisplay("    ");
+  
   pinMode(buttonPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonPress, CHANGE);
-  handleUIEvent(BUTTON_RELEASED);
 }
 
 void uiLoop() {
 
-  long newKnob, oldKnob = 0;
+  long newKnob;
+  static long oldKnob = 0;
 
   newKnob = knob.read();
   if (newKnob != oldKnob) {
     scrollDelta = newKnob - oldKnob;
     oldKnob = newKnob;
     handleUIEvent(SCROLL);
-  } else if (buttonEvent)
+  } else if (buttonEvent) {
     handleUIEvent(buttonEvent);
-  else
+    buttonEvent=0;
+  } else
     handleUIEvent(UI_NOTHING);
   
 }
