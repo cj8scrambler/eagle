@@ -11,9 +11,8 @@ typedef enum {
 #define rotary1Pin    13
 #define rotary2pin    14
 
-extern float currentTemp;
-extern float setpoint;
+extern int16_t currentTemp;
+extern int16_t setpoint;
 extern temp_mode mode;
-extern float hysteresis;
+extern int16_t hysteresis;
 extern bool comp_mode;
-

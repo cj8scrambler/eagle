@@ -56,3 +56,13 @@ Components
   * off          - Relay off
   * solid red    - Relay on in heat mode
   * solid blue   - Relay on in cool mode
+
+
+=======
+##Cloud Backend
+
+Investigating possible backends to hold data
+   * [SensorCloud](https://github.com/LORD-MicroStrain/SensorCloud/blob/master/API/README.md) Free access, but requires HTTPS
+   * [thethingsio](https://panel.thethings.io)  First device is free.  Very straightfoward; even includes client code.
+   * [freeboard](https://freeboard.io)  Instant data is free; historical data seems to cost $1/month.
+   * [AWS](https://learn.adafruit.com/cloud-thermometer/software-setup) complicated setup.

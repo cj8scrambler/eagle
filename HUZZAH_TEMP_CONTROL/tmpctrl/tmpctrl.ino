@@ -11,39 +11,47 @@
 #include "ntp.h"
 #include "http.h"
 
-#define MIN_COMPRESSOR_SECONDS  180
-#define NUM_DATA_SAMPLES  512
+#define TEMP_SAMPLE_INTERVAL    2000 /*mS*/
+#define MIN_COMPRESSOR_SECONDS   180
+#define NUM_DATA_SAMPLES         512
 
-#define C_TO_F(c)  (((c) * 1.8) + 32.0)
+/* Temp in 1/100 degrees */
+#define LM50_TO_C(a)  (((int32_t)976*(a)-500000)/100)
+#define LM50_TO_F(a)  (((int32_t)8789*(a)-4500000)/500+3200)
 
 typedef struct {
   uint32_t timestamp;
   uint8_t enabled;
-  float temp;
-  float setpoint;
-  float hyst;
+  int16_t temp;
+  int16_t setpoint;
+  int16_t hyst;
   uint8_t mode;
   uint8_t comp_mode;
 } datapoint;
 
-float currentTemp = 25.0;
-float setpoint;
+int16_t currentTemp = 2500;
+int16_t setpoint;
 temp_mode mode = MODE_HEAT;
-float hysteresis;
+int16_t hysteresis;
 bool comp_mode;
 
 static datapoint dataLog[NUM_DATA_SAMPLES];
-static int readIndex=0, writeIndex=0;
+static int readIndex = 0, writeIndex = 0;
+
 
 int checkWifi(void)
 {
   int timeout = 20;
-  if (WiFi.status() == WL_CONNECTED) {
+  int status = WiFi.status();
+  
+  if (status == WL_CONNECTED) {
     return 0;
   }
-
+  Serial.print("problem: status=");
+  Serial.println(status);
+  
   Serial.print("Connecting to ");
-  Serial.println(defaultSSID);
+  Serial.print("Connecting to ");
 
   updateStatusLED(WIFI_LED, ORANGE, true);
 
@@ -53,9 +61,11 @@ int checkWifi(void)
   while (WiFi.status() != WL_CONNECTED && timeout--) {
     delay(500);
     Serial.print(".");
-  } 
+  }
 
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("");
+    Serial.println("Failed to connect");
     updateStatusLED(WIFI_LED, RED, false);
     ntpDisable();
     return 1;
@@ -70,7 +80,7 @@ int checkWifi(void)
 
 void uploadCloudData() {
   /* TBD */
-  while(readIndex != writeIndex) {
+  while (readIndex != writeIndex) {
     /* send dataLog[readIndex] */
     readIndex = (readIndex + 1) % NUM_DATA_SAMPLES;
   }
@@ -88,8 +98,8 @@ void logDatapoint() {
 
     writeIndex = (writeIndex + 1) % NUM_DATA_SAMPLES;
     if (writeIndex == readIndex)
-      readIndex = (readIndex + 1) % NUM_DATA_SAMPLES; 
-    
+      readIndex = (readIndex + 1) % NUM_DATA_SAMPLES;
+
     Serial.print("Log data at ");
     Serial.println(now());
   } else {
@@ -110,11 +120,11 @@ void setPower(bool enable) {
   if (digitalRead(relayPin) != enable) {
     digitalWrite(relayPin, enable);
     lasttime = now();
-    updateStatusLED(RELAY_LED, enable?((mode==MODE_HEAT)?RED:BLUE):OFF, false);
+    updateStatusLED(RELAY_LED, enable ? ((mode == MODE_HEAT) ? RED : BLUE) : OFF, false);
   }
 }
 
-float getTrippoint(void) {
+uint16_t getTrippoint(void) {
 
   if (digitalRead(relayPin)) {
     if (mode == MODE_HEAT)
@@ -122,8 +132,13 @@ float getTrippoint(void) {
     else
       return (setpoint - hysteresis);
   } else
-      return (setpoint);
+    return (setpoint);
 
+}
+
+int16_t lowpass(int16_t temp) {
+  #define alpha 5   /* % weight */
+  return ((int16_t)((((int32_t)alpha*temp) + (int32_t)(100 - alpha) * currentTemp)/100));
 }
 
 void setup() {
@@ -142,7 +157,7 @@ void setup() {
   Serial.println();
 
   pinMode(A0, INPUT); /* ADC on LM50 temp sensor */
-  
+
   checkWifi();
 
   WiFi.macAddress(macInt);
@@ -158,28 +173,35 @@ void setup() {
 }
 
 void loop() {
-  float trippoint;
+  uint16_t trippoint;
+  static  unsigned long previousMillis = 0;
+  unsigned long currentMillis = millis();
 
-  currentTemp = C_TO_F(100.0 * (analogRead(A0) - 0.5));
+  if (currentMillis - previousMillis >= TEMP_SAMPLE_INTERVAL) {
+    previousMillis = currentMillis;
+    currentTemp = lowpass(LM50_TO_F(analogRead(A0)));
+Serial.print("Wifi status: ");
+Serial.println(WiFi.status());
+  }
+  
   trippoint = getTrippoint();
   if (mode == MODE_HEAT)
     if (currentTemp < trippoint)
       setPower(1);
     else
       setPower(0);
+  else if (currentTemp > trippoint)
+    setPower(1);
   else
-    if (currentTemp > trippoint)
-      setPower(1);
-    else
-      setPower(0);
-  logDatapoint();
+    setPower(0);
+  //  logDatapoint();
 
   uiLoop();
 
-  if (!checkWifi()) {
-    uploadCloudData();
-    loopHTTP();
-  }
+    if (!checkWifi()) {
+  //    uploadCloudData();
+      loopHTTP();
+    }
 
   //delay(20); /* hopefully get rid of this */
 }

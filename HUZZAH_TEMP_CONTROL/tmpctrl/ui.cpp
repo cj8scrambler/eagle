@@ -14,6 +14,7 @@ extern "C" {
 #include "tmpctrl.h"
 #include "ui.h"
 
+#define UI_NOTHING          0
 #define BUTTON_RELEASED     1
 #define BUTTON_PRESSED      2
 #define BUTTON_TIMER_EXPIRE 3
@@ -114,7 +115,7 @@ static void handleButtonPress(void) {
 
 static void updateDisplay(char *data) {
   int led=3;
-  int pos=strlen(data);
+  int pos=strlen(data)-1;
   bool dot=false;
   
   if (pos < 1 || pos > 8) {
@@ -229,19 +230,19 @@ static void handleUIEvent(int event) {
   switch (ui)
   {
   case UI_IDLE:
-    snprintf(ui_string, 9, "%3.1f", currentTemp);
+    snprintf(ui_string, 9, "%3d.%1d", currentTemp/100, ((abs(currentTemp)+5)%100)/10);
     break;
   case UI_IDLE_SHOW_SETPOINT:
-    snprintf(ui_string, 9, "%3.1f", setpoint);
+    snprintf(ui_string, 9, "%3d.%1d", setpoint/100, ((abs(setpoint)+5)%100)/10);
     break;
   case UI_SET_MODE:
     snprintf(ui_string, 9, "%s", (mode==MODE_HEAT)?"HEAT":"COOL");
     break;
   case UI_SET_SETPOINT:
-    snprintf(ui_string, 9, "%3.1f", setpoint);
+    snprintf(ui_string, 9, "%3d.%1d", setpoint/100, ((abs(setpoint)+5)%100)/10);
     break;
   case UI_SET_HYST:
-    snprintf(ui_string, 9, "H %1.1f", hysteresis);
+    snprintf(ui_string, 9, "H %1d.%1d", hysteresis/100, ((abs(hysteresis)+5)%100)/10);
     break;
   case UI_SET_COMP:
     snprintf(ui_string, 9, "%s", comp_mode?"COMP":"REG");
@@ -252,7 +253,6 @@ static void handleUIEvent(int event) {
 
   /* parse string and push it to the 4 digit display */
   updateDisplay(ui_string);
-  Serial.println(ui_string);
 }
 
 char *uiToString(void)
@@ -301,6 +301,7 @@ void uiSetup() {
 
   pinMode(buttonPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonPress, CHANGE);
+  handleUIEvent(BUTTON_RELEASED);
 }
 
 void uiLoop() {
@@ -312,9 +313,9 @@ void uiLoop() {
     scrollDelta = newKnob - oldKnob;
     oldKnob = newKnob;
     handleUIEvent(SCROLL);
-  }
-
-  if (buttonEvent)
+  } else if (buttonEvent)
     handleUIEvent(buttonEvent);
+  else
+    handleUIEvent(UI_NOTHING);
   
 }
