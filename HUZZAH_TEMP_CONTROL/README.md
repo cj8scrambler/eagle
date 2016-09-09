@@ -19,13 +19,15 @@ Components
    * [TimeLib](http://www.pjrc.com/teensy/td_libs_Time.html)
    * [Encoder](http://www.pjrc.com/teensy/td_libs_Encoder.html)
    * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
-   * Adafruit GFX
+   * PubSubClient
    * Adafruit LEDBackpack
-=======
+   * Adafruit GFX
 
+
+=======
 ###UI States
  
-  * ###.# - Idle mode
+  * Idle mode
     * Status LED - red/blue for heat/cool mode; flashing is off; solid is on
     * shows current temp
     * button press shows setpoint for 2 seconds after release

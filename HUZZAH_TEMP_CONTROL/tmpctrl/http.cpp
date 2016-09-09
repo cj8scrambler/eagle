@@ -9,7 +9,6 @@
 ESP8266WebServer HTTP(80);
 
 void handleRoot() {
-  char buffer[BUFFER_SIZE];
   int16_t value;
 
   String text, color;
@@ -23,9 +22,8 @@ void handleRoot() {
     if ((value >= SETPOINT_MIN) && (value <= SETPOINT_MAX)) {
       if (value != setpoint) {
         setpoint = value;
-        snprintf(buffer, BUFFER_SIZE, "%d.%1d", setpoint/100, ((abs(setpoint)+5)%100)/10);
         Serial.print("Setpoint updated from HTTP to: ");
-        Serial.println(buffer);
+        Serial.println(divide_100(setpoint));
       }
     } else {
       Serial.print("Error: invalid setpoint configured from HTTP: ");
@@ -38,9 +36,8 @@ void handleRoot() {
     if ((value >= HYSTERESIS_MIN) && (value <= HYSTERESIS_MAX)) {
       if (value != hysteresis) {
         hysteresis = value;
-        snprintf(buffer, BUFFER_SIZE, "%d.%1d", hysteresis/100, ((abs(hysteresis)+5)%100)/10);
         Serial.print("Hysteresis updated from HTTP to: ");
-        Serial.println(buffer);
+        Serial.println(divide_100(hysteresis));
       }
     } else {
       Serial.print("Error: invalid hysteresis configured from HTTP: ");
@@ -97,18 +94,15 @@ void handleRoot() {
   message += "  <tr><th colspan=2>Settings</th><th width=100></th><th colspan=2>Status</th></tr>\n";
   message += "<form method='get' action=''>\n";
 
-  snprintf(buffer, BUFFER_SIZE, "%d.%1d", setpoint/100, ((abs(setpoint)+5)%100)/10);
   message += "  <tr><td><label>Setpoint: </label></td><td><input type=\"number\" step=\"0.1\" min=\"0\" max=\"100\" name='setpoint' value=\"";
-  message += buffer;
+  message += divide_100(setpoint);
   message += "\"></td><td></td>\n";
-  snprintf(buffer, BUFFER_SIZE, "%d.%1d", currentTemp/100, ((abs(currentTemp)+5)%100)/10);
   message += "<td><label>Current temperature: </label></td><td><input type=\"number\" readonly value=\"";
-  message += buffer;
+  message += divide_100(currentTemp);
   message += "\"></td></tr>\n";
 
-  snprintf(buffer, BUFFER_SIZE, "%d.%1d", hysteresis/100, ((abs(hysteresis)+5)%100)/10);
   message += "  <tr><td><label>Hysteresis: </label></td><td><input type=\"number\" name='hysteresis' step=\"0.1\" min=\"0\" max=\"9.9\" value=\"";
-  message += buffer;
+  message += divide_100(hysteresis);
   message += "\"></td><td></td>\n";
   if (getPower()) {
     if (mode == MODE_COOL) {

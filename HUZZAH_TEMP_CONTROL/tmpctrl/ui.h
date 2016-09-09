@@ -12,8 +12,8 @@
 #define VILOET       0xff00ff
 #define WHITE        0xffffff
 
+char *divide_100(int16_t value);
 char *uiToString(void);
 void updateStatusLED(uint8_t led, uint32_t rgb_color, bool blink);
 void uiSetup(void);
 void uiLoop(void);
-

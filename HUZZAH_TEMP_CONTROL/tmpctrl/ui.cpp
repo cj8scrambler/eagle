@@ -245,19 +245,19 @@ static void handleUIEvent(int event) {
   switch (ui)
   {
   case UI_IDLE:
-    snprintf(ui_string, 9, "%3d.%1d", currentTemp/100, ((abs(currentTemp)+5)%100)/10);
+    snprintf(ui_string, 9, "%s", divide_100(currentTemp));
     break;
   case UI_IDLE_SHOW_SETPOINT:
-    snprintf(ui_string, 9, "%3d.%1d", setpoint/100, ((abs(setpoint)+5)%100)/10);
+    snprintf(ui_string, 9, "%s", divide_100(setpoint));
     break;
   case UI_SET_MODE:
     snprintf(ui_string, 9, "%s", (mode==MODE_HEAT)?"HEAT":"COOL");
     break;
   case UI_SET_SETPOINT:
-    snprintf(ui_string, 9, "%3d.%1d", setpoint/100, ((abs(setpoint)+5)%100)/10);
+    snprintf(ui_string, 9, "%s", divide_100(setpoint));
     break;
   case UI_SET_HYST:
-    snprintf(ui_string, 9, "H %1d.%1d", hysteresis/100, ((abs(hysteresis)+5)%100)/10);
+    snprintf(ui_string, 9, "H %s", divide_100(hysteresis));
     break;
   case UI_SET_COMP:
     snprintf(ui_string, 9, "%s", comp_mode?"COMP":" REG");
@@ -270,25 +270,18 @@ static void handleUIEvent(int event) {
   updateDisplay(ui_string);
 }
 
-char *uiToString(void)
+/* Make a string representation of an integer divided by 100. */
+char *divide_100(int16_t value)
 {
-  switch (ui)
-  {
-  case UI_IDLE:
-    return "Idle";
-  case UI_IDLE_SHOW_SETPOINT:
-    return "Idle: Showing setpoint";
-  case UI_SET_MODE:
-    return "Change mode";
-  case UI_SET_SETPOINT:
-    return "Change setpoint";
-  case UI_SET_HYST:
-    return "Change hysteresis";
-  case UI_SET_COMP:
-    return "Change compressor mode";
-  default:
-    return "Unkown";
-  }
+    int ptr = 0;
+    static char buffer[8];
+    if (value < 0)
+        buffer[ptr++] = '-';
+      
+    snprintf(&(buffer[ptr]), 7, "%d.%d",
+            abs((value + ((value<0)?-5:5)) /100),
+            ((abs(value)+5)%100)/10);
+    return buffer;
 }
 
 void updateStatusLED(uint8_t led, uint32_t rgb_color, bool blink){
