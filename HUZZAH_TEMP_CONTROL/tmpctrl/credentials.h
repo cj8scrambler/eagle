@@ -1,2 +1,6 @@
-const char* defaultSSID   = "NETWORK_NAME";
-const char* defaultPasswd = "SECRET_PASSWORD";
+#define wifiSSID      "NETWORK_NAME"
+#define wifiPasswd    "SECRET_PASSWORD"
+
+#define mqttServer    "some.iot.host"
+#define mqttUser      "iotusername"
+#define mqttPasswd    "password"
