@@ -1,6 +1,8 @@
 # Credentials file should have local changes with secret
 # stuff.  To avoid git tracking local changes here, run:
 #   git update-index --assume-unchanged HUZZAH_TEMP_CONTROL/tmpctrl/credentials.h
+# If you do need to update the tracked file and commit the change run:
+#   git update-index --no-assume-unchanged HUZZAH_TEMP_CONTROL/tmpctrl/credentials.h
 
 # Eagle project file
 # It contains a serial number and references to the file structure

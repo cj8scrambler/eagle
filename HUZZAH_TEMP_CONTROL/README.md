@@ -1,34 +1,57 @@
 ##Huzzah based temp controller with wifi
 =======
 
-This project is a Huzzah based temp controller with wifi
-network access for remote data logging.  It's built using
-existing feather shields from Adafruit.
+This project is a Huzzah Feather based temperature controller with wifi
+network access for remote configuration and data logging.  It's built using
+off the shelf components from Adafruit.
 
 Components
-  * [Huzzah feather board](https://www.adafruit.com/products/2821) from Adafruit 
-  * [Non-latching relay feather wing](https://www.adafruit.com/products/2895) from Adafruit.  Too under powered.
-  * [Quad Alphanumeric display](https://www.adafruit.com/products/3128) from Adafruit.  Used for UI.  Uses 3V (about 80mA).  Communicates on I2C (GPIO 4/5) at address 0x70.
-  * Rotary encoder
-  * [Diffused 5mm NeoPixel] (https://www.adafruit.com/products/1938) from Adrafruit for status LEDs.
-  * LM50 temp sensor (compatible with BeerBug)
+  * [Huzzah feather board](https://www.adafruit.com/products/2821) Includes WiFi.
+  * [FeatherWing Power Relay](https://www.adafruit.com/products/3191) Rated for 10A.  Will work for resistive heaters, but probably not enough for a compressor based cooling system.
+  * [Quad Alphanumeric display](https://www.adafruit.com/products/3128) Used for UI.  Uses 3V (about 80mA).  Communicates on I2C (GPIO 4/5) at address 0x70.
+  * [Rotary encoder w/push button](https://www.adafruit.com/products/377) Drives the UI.
+  * [Diffused 5mm NeoPixel](https://www.adafruit.com/products/1938) 2 Status LEDs.
+  * [TMP36] (https://www.adafruit.com/products/165) Temp sensor support.  Allows sensor to be shared with BeerBug.  1C accuracy
+  * [DS18B20](https://www.adafruit.com/product/381) temp sensor support.  0.5C accuarcy
+  * [FeatherWing Proto board](https://www.adafruit.com/products/2884) Gives some space to wire up all the external devices.
+  * Misc: [stacking headers](https://www.adafruit.com/products/2830), [case](https://www.amazon.com/gp/product/B0002BSRIO/ref=oh_aui_detailpage_o02_s00?ie=UTF8&psc=1), outlet
 
 =======
-###Arduino Libraries
-   * ESP8266 Board package: http://arduino.esp8266.com/stable/package_esp8266com_index.json
-   * [TimeLib](http://www.pjrc.com/teensy/td_libs_Time.html)
+##Build and Flash
+
+The Arduino IDE is used to build and flash the board.  In order to build the code, you'll
+need to [install the following libraries](https://www.arduino.cc/en/Guide/Libraries):
+
+###Standard Libraries
+   * ESP8266 Board package from: http://arduino.esp8266.com/stable/package_esp8266com_index.json
+   * ESP8266WiFi
+   * ESP8266WebServer
+   * ESP8266SSDP
    * [Encoder](http://www.pjrc.com/teensy/td_libs_Encoder.html)
-   * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
-   * PubSubClient
-   * Adafruit LEDBackpack
-   * Adafruit GFX
+   * [OneWire](http://www.pjrc.com/teensy/td_libs_OneWire.html)
+   * [Time](http://playground.arduino.cc/code/time)
+   * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
+   * [PubSubClient](http://pubsubclient.knolleary.net/)
 
+###[User installed libraries](https://learn.adafruit.com/adafruit-all-about-arduino-libraries-install-use/how-to-install-a-library)
+   * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
+   * [Adafruit LEDBackpack](https://github.com/adafruit/Adafruit_LED_Backpack)
+   * [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library)
+
+Set the board type **Tools->Board:** to "Adafruit HUZZAH ESP8266".  If this choice doesn't exist, make sure you've installed the ESP8266 Board Package (above).
+
+Connect a USB cable to the board.  Set the **Tools->Port** to the newly enumerated serial interface.
+
+The Wifi and MQTT data is hardcoded in the build.  You must edit the [credentials.h] (https://github.com/cj8scrambler/eagle/blob/master/HUZZAH_TEMP_CONTROL/tmpctrl/credentials.h)
+file to your approriate values.
+
+Click the 'Verify' button to build the code.  Click the 'Upload' button to reflash the board.
 
 =======
-###UI States
+##UI Definition
  
+###States
   * Idle mode
-    * Status LED - red/blue for heat/cool mode; flashing is off; solid is on
     * shows current temp
     * button press shows setpoint for 2 seconds after release
     * while holding button, rotary changes setpoint
@@ -67,12 +90,25 @@ Components
   * solid red    - Relay on in heat mode
   * solid blue   - Relay on in cool mode
 
+=======
+##Backend data
+
+Data is broadcast to an MQTT broker.  This allows it to be monitored in real time, but usually does
+not provide any persistant storage.
+
+I am using [a python script](https://gist.github.com/matbor/6532185) to subscribe the the data stream
+and back it up in my own MySQL database.
+
+[Hive](http://www.hivemq.com/try-out/) provides free MQTT broker services.  There are also a number
+of free brokers you can [run on your own](http://blog.thingstud.io/getting-started/free-mqtt-brokers-for-thingstudio/).
 
 =======
-##Cloud Backend
+##Web interface
+There is a simple native web interface running on the feather board.  This gives a way to check
+the current status and change settings.  You will need to know the IP address of your board to access
+this and you probably won't be able to access it remotely depending on your network configuration.
 
-Investigating possible backends to hold data
-   * [SensorCloud](https://github.com/LORD-MicroStrain/SensorCloud/blob/master/API/README.md) Free access, but requires HTTPS
-   * [thethingsio](https://panel.thethings.io)  First device is free.  Very straightfoward; even includes client code.
-   * [freeboard](https://freeboard.io)  Instant data is free; historical data seems to cost $1/month.
-   * [AWS](https://learn.adafruit.com/cloud-thermometer/software-setup) complicated setup.
+There is a more sophisitcated javascript interface that can be run from a remote server.  It uses
+MQTT to get current data and send configuration commands to the device.  It can also use an SQL
+database to display historical data as well.  This interface can be accessed remotely and doesn't
+require you to know the IP of the device.
