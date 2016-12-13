@@ -4,6 +4,7 @@
 
 #include <Time.h>
 #include <ESP8266WiFi.h>
+#include <EEPROM.h>
 #include <limits.h>
 
 #include "RunningAverage.h"
@@ -20,8 +21,8 @@
 /* Temp in 1/100 degrees */
 #define LM50_TO_C(a)  (((int32_t)976*(a)-500000)/100)
 #define LM50_TO_F(a)  (((int32_t)8789*(a)-4500000)/500+3200)
-#define DS18_TO_C(a)  (((int32_t)625*(a))/100)
-#define DS18_TO_F(a)  (((int32_t)1125*(a)/100) + 3200)
+#define DS18_TO_C(a)  (a)
+#define DS18_TO_F(a)  (((9*(a))/5) + 3200)
 
 typedef enum {
   LOG_TEMPERATURE,
@@ -40,13 +41,12 @@ typedef struct {
   int16_t value;
 } datapoint;
 
+settings g_settings;
+static settings old_settings;
+
 bool full_status = 0;
 int16_t currentTemp = 7200;
 int16_t auxTemp = 7200;
-int16_t setpoint = 6850;
-temp_mode mode = MODE_HEAT;
-int16_t hysteresis = 180;
-bool comp_mode = 0;
 
 static datapoint dataLog[NUM_DATA_SAMPLES];
 static int readIndex = 0, writeIndex = 0;
@@ -225,10 +225,10 @@ void logDatapoint() {
     int8_t new_enabled = digitalRead(relayPin);
     int16_t new_temp = currentTemp;
     int16_t new_auxtemp = auxTemp;
-    int8_t new_mode = mode;
-    int16_t new_setpoint = setpoint;
-    int16_t new_hyst = hysteresis;
-    int8_t new_comp_mode = comp_mode;
+    int8_t new_mode = g_settings.mode;
+    int16_t new_setpoint = g_settings.setpoint;
+    int16_t new_hyst = g_settings.hysteresis;
+    int8_t new_comp_mode = g_settings.comp_mode;
     
     if (writeIndex == (readIndex - 1))
       Serial.println("Buffer overflow");
@@ -350,7 +350,7 @@ void setPower(bool enable) {
   static time_t lasttime;
   time_t deltatime;
 
-  if (comp_mode) {
+  if (g_settings.comp_mode) {
     deltatime = now() - lasttime;
     if (deltatime < MIN_COMPRESSOR_TIME){
       Serial.println("In compressor mode timeout");
@@ -361,26 +361,46 @@ void setPower(bool enable) {
   if (digitalRead(relayPin) != enable) {
     digitalWrite(relayPin, enable);
     lasttime = now();
-    updateStatusLED(RELAY_LED, enable ? ((mode == MODE_HEAT) ? RED : BLUE) : OFF, false);
+    updateStatusLED(RELAY_LED, enable ? ((g_settings.mode == MODE_HEAT) ? RED : BLUE) : OFF, false);
   }
 }
 
 uint16_t getTrippoint(void) {
 
   if (digitalRead(relayPin)) {
-    if (mode == MODE_HEAT)
-      return (setpoint + hysteresis);
+    if (g_settings.mode == MODE_HEAT)
+      return (g_settings.setpoint + g_settings.hysteresis);
     else
-      return (setpoint - hysteresis);
+      return (g_settings.setpoint - g_settings.hysteresis);
   } else
-    return (setpoint);
+    return (g_settings.setpoint);
 
+}
+
+template <class T> int EEPROM_write(int ee, const T& value)
+{
+    const byte* p = (const byte*)(const void*)&value;
+    unsigned int i;
+    for (i = 0; i < sizeof(value); i++)
+          EEPROM.write(ee++, *p++);
+    EEPROM.commit();
+    return i;
+}
+
+template <class T> int EEPROM_read(int ee, T& value)
+{
+    byte* p = (byte*)(void*)&value;
+    unsigned int i;
+    for (i = 0; i < sizeof(value); i++)
+          *p++ = EEPROM.read(ee++);
+    return i;
 }
 
 void setup() {
   byte macInt[6];
   String macStr;
   uint32_t uniqueId;
+  int i=0;
 
   Serial.begin(115200);
   delay(100);
@@ -389,14 +409,25 @@ void setup() {
   pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, 0);
 
-  ds_setup();
+  EEPROM.begin(512);
+  EEPROM_read(0, g_settings);
+  memcpy(&old_settings, &g_settings, sizeof(g_settings));
 
   uiSetup();
 
-  Serial.println();
-  Serial.println();
+  while (!digitalRead(buttonPin))
+    if (i++ == 50) {
+      uiShowReset();
+      memset(&g_settings, 0, sizeof(g_settings));
+      EEPROM_write(0, g_settings);
+      delay(1000);
+      ESP.restart();
+    }
+    delay(100);
+  uiWaitForTempSensor();
 
-  pinMode(A0, INPUT); /* ADC on LM50 temp sensor */
+  Serial.println();
+  Serial.println();
 
   checkWifi();
 
@@ -420,17 +451,25 @@ void loop() {
   unsigned long currentMillis = millis();
 
   if (currentMillis - prevTempSample >= TEMP_SAMPLE_INTERVAL) {
-    byte addr[8];
+    if(!ds_is_present(TEMP_MAIN)) {
+      setPower(0);
+      uiWaitForTempSensor();
+    }
+
     prevTempSample = currentMillis;
-    curTempRA.addValue(LM50_TO_F(analogRead(A0)));
+    curTempRA.addValue(get_temp(TEMP_MAIN));
     currentTemp = curTempRA.getAverage();
-    auxTempRA.addValue(DS18_TO_F(read_ds_temp()));
-    auxTemp = auxTempRA.getAverage();
+
+    if(ds_is_present(TEMP_AUX)) {
+      curTempRA.addValue(get_temp(TEMP_AUX));
+      auxTemp = auxTempRA.getAverage();
+    }
+    start_temp_reading();
 
   }
 
   trippoint = getTrippoint();
-  if (mode == MODE_HEAT)
+  if (g_settings.mode == MODE_HEAT)
     if (currentTemp < trippoint)
       setPower(1);
     else
@@ -451,5 +490,11 @@ void loop() {
     mqtt_loop();
     uploadCloudData();
     loopHTTP();
+  }
+
+  if (memcmp(&old_settings, &g_settings, sizeof(g_settings))) {
+    Serial.println("Saving settings to EEPROM.");
+    EEPROM_write(0, g_settings);
+    memcpy(&old_settings, &g_settings, sizeof(g_settings));
   }
 }

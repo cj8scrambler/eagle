@@ -1,89 +1,96 @@
 #include <OneWire.h>
+#include <DallasTemperature.h>
 
+#include "ds.h"
 #include "tmpctrl.h"
 
 OneWire  ds(digital_temp);
-byte ds_addr[8];
-bool type_s;
+DallasTemperature sensors(&ds);
 
-void ds_setup(void) {
-  if ( !ds.search(ds_addr)) {
-    Serial.println("No DS18 Temp Sensor found");
-    goto no_device;
+static bool detect_sensor(temp_sensor sensor) {
+  /* If there is a sensor configured return true */
+  if (g_settings.ds_addr[sensor][0] && g_settings.ds_addr[sensor][0] != 0xFF) {
+    if (!sensors.isConnected(g_settings.ds_addr[sensor])) {
+      Serial.print("WARNING: Pre-configured ");
+      Serial.print("temp sensor could not be found on the bus:");
+      Serial.print(g_settings.ds_addr[sensor][0], HEX);
+      Serial.print(g_settings.ds_addr[sensor][1], HEX);
+      Serial.print(g_settings.ds_addr[sensor][2], HEX);
+      Serial.print(g_settings.ds_addr[sensor][3], HEX);
+      Serial.print(g_settings.ds_addr[sensor][4], HEX);
+      Serial.print(g_settings.ds_addr[sensor][5], HEX);
+      Serial.print(g_settings.ds_addr[sensor][6], HEX);
+      Serial.println(g_settings.ds_addr[sensor][7], HEX);
+    }
+    return true;
   }
   
-  if (OneWire::crc8(ds_addr, 7) != ds_addr[7]) {
-    Serial.println("Error: DS18 CRC is not valid!");
+  if (!ds.search(g_settings.ds_addr[sensor])) {
+    Serial.println("No DS18 Temp Sensor found for sensor");
     goto no_device;
   }
- 
-  // the first ROM byte indicates which chip
-  switch (ds_addr[0]) {
-    case 0x10:
-      Serial.println("Found DS18S20");  // or old DS1820
-      type_s = 1;
-      break;
-    case 0x28:
-      Serial.println("Found DS18B20");
-      type_s = 0;
-      break;
-    case 0x22:
-      Serial.println("Found DS1822");
-      type_s = 0;
-      break;
-    default:
-      Serial.print("Device found, but it is not a DS18x20 family device: 0x");
-      Serial.println(ds_addr[0], HEX);
-      return;
-  } 
 
-  ds.reset();
-  ds.select(ds_addr);
-  ds.write(0x44);        // start the next conversion
-  
-  return;
+  if (OneWire::crc8(g_settings.ds_addr[sensor], 7) != g_settings.ds_addr[sensor][7]) {
+    Serial.println("Error: DS18 CRC is not valid for sensor");
+    goto no_device;
+  }
+
+  Serial.print("Resolution for sensor: ");
+  Serial.print(sensors.getResolution(g_settings.ds_addr[sensor]), DEC); 
+  Serial.println();
+
+  return true;
 no_device:
-  ds_addr[0] = 0x00;
-  return;
+  g_settings.ds_addr[sensor][0] = 0x00;
+  return false;
 }
 
-int16_t read_ds_temp(void) {
-  byte data[12];
-  int i;
-  byte present;
-  
-  present = ds.reset();
-  ds.select(ds_addr);    
-  ds.write(0xBE);
-  
-  for ( i = 0; i < 9; i++) {
-    data[i] = ds.read();
-  }
-
-  /* start the next conversion*/
-  ds.reset();
-  ds.select(ds_addr);
-  ds.write(0x44);  
-  
-  // Convert the data to actual temperature
-  // because the result is a 16 bit signed integer, it should
-  // be stored to an "int16_t" type, which is always 16 bits
-  // even when compiled on a 32 bit processor.
-  int16_t raw = (data[1] << 8) | data[0];
-  if (type_s) {
-    raw = raw << 3; // 9 bit resolution default
-    if (data[7] == 0x10) {
-      // "count remain" gives full 12 bit resolution
-      raw = (raw & 0xFFF0) + 12 - data[6];
+bool ds_setup(void) {
+  ds.reset_search();
+  if (detect_sensor(TEMP_MAIN)) {
+    if (detect_sensor(TEMP_AUX)) {
+      if(!memcmp(g_settings.ds_addr[TEMP_MAIN], g_settings.ds_addr[TEMP_MAIN], 8)) {
+        Serial.println("Error: MAIN sensor detected twice; retry aux search");
+        g_settings.ds_addr[TEMP_AUX][0] = 0x00;
+        if (!detect_sensor(TEMP_AUX)) {
+            Serial.println("Warning: No AUX temp sensor detected\n");
+        }
+      }
+    } else {
+      Serial.println("Warning: No AUX temp sensor detected\n");
     }
   } else {
-    byte cfg = (data[4] & 0x60);
-    // at lower res, the low bits are undefined, so let's zero them
-    if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
-    else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
-    else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
-    //// default is 12 bit resolution, 750 ms conversion time
+    Serial.println("Error: No MAIN temp sensor detected");
+    return false;
   }
 
-  return raw;
+  sensors.requestTemperatures();
+
+  return true;
 }
+
+bool ds_swap_sensors(void){
+  byte tmp_addr[8];
+  memcpy(tmp_addr, g_settings.ds_addr[0], sizeof(g_settings.ds_addr[0]));
+  memcpy(g_settings.ds_addr[0], g_settings.ds_addr[1], sizeof(g_settings.ds_addr[0]));
+  memcpy(g_settings.ds_addr[1], tmp_addr, sizeof(g_settings.ds_addr[0]));
+}
+
+bool ds_delete_sensors(void){
+  memset(g_settings.ds_addr[0], 0xFF, sizeof(g_settings.ds_addr[0]));
+  memset(g_settings.ds_addr[1], 0xFF, sizeof(g_settings.ds_addr[0]));
+}
+
+int16_t get_temp(temp_sensor sensor){
+  float temp = sensors.getTempF(g_settings.ds_addr[sensor]);
+  return (100 * (temp+0.005));
+}
+
+bool ds_is_present(temp_sensor sensor) {
+  return (sensors.isConnected(g_settings.ds_addr[sensor]));
+}
+
+void start_temp_reading(void) {
+  sensors.requestTemperatures();
+}
+

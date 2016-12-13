@@ -2,6 +2,7 @@
 #include <ESP8266SSDP.h>
 
 #include "tmpctrl.h"
+#include "ds.h"
 #include "ui.h"
 
 #define BUFFER_SIZE 32
@@ -16,14 +17,26 @@ void handleRoot() {
   String new_hysteresis = HTTP.arg("hysteresis");
   String new_mode = HTTP.arg("mode");
   String new_comp_mode = HTTP.arg("comp_mode");
+  String ts_action = HTTP.arg("ts_action");
+
+Serial.print("DZ: ts_action = ");
+Serial.println(ts_action);
+
+  if (ts_action == "Swap") {
+    Serial.print("Temp sensor address swap requested from HTTP");
+    ds_swap_sensors();
+  } else if (ts_action == "Clear" ) {
+    Serial.print("Temp sensor erase from HTTP");
+    ds_delete_sensors();
+  }
 
   if (new_setpoint.length()) {
     value = new_setpoint.toFloat()*100;
     if ((value >= SETPOINT_MIN) && (value <= SETPOINT_MAX)) {
-      if (value != setpoint) {
-        setpoint = value;
+      if (value != g_settings.setpoint) {
+        g_settings.setpoint = value;
         Serial.print("Setpoint updated from HTTP to: ");
-        Serial.println(divide_100(setpoint));
+        Serial.println(divide_100(g_settings.setpoint));
       }
     } else {
       Serial.print("Error: invalid setpoint configured from HTTP: ");
@@ -34,10 +47,10 @@ void handleRoot() {
   if (new_hysteresis.length()) {
     value = new_hysteresis.toFloat()*100;
     if ((value >= HYSTERESIS_MIN) && (value <= HYSTERESIS_MAX)) {
-      if (value != hysteresis) {
-        hysteresis = value;
+      if (value != g_settings.hysteresis) {
+        g_settings.hysteresis = value;
         Serial.print("Hysteresis updated from HTTP to: ");
-        Serial.println(divide_100(hysteresis));
+        Serial.println(divide_100(g_settings.hysteresis));
       }
     } else {
       Serial.print("Error: invalid hysteresis configured from HTTP: ");
@@ -47,13 +60,13 @@ void handleRoot() {
 
   if (new_mode.length()){
     if (new_mode == "cool") {
-      if (mode != MODE_COOL) {
-        mode = MODE_COOL;
+      if (g_settings.mode != MODE_COOL) {
+        g_settings.mode = MODE_COOL;
         Serial.println("Mode updated from HTTP to: cool");
       }
     } else if (new_mode == "heat") {
-      if (mode != MODE_HEAT) {
-        mode = MODE_HEAT;
+      if (g_settings.mode != MODE_HEAT) {
+        g_settings.mode = MODE_HEAT;
         Serial.println("Mode updated from HTTP to: heat");
       }
     } else {
@@ -64,13 +77,13 @@ void handleRoot() {
 
   if (new_comp_mode.length()){
     if (new_comp_mode == "on") {
-      if (!comp_mode) {
-        comp_mode = 1;
+      if (!g_settings.comp_mode) {
+        g_settings.comp_mode = 1;
         Serial.println("Compressor mode updated from HTTP to: on");
       }
     } else if (new_comp_mode == "off") {
-      if (comp_mode) {
-        comp_mode = 0;
+      if (g_settings.comp_mode) {
+        g_settings.comp_mode = 0;
         Serial.println("Compressor mode updated from HTTP to: off");
       }
     } else {
@@ -95,20 +108,20 @@ void handleRoot() {
   message += "<form method='get' action=''>\n";
 
   message += "  <tr><td><label>Setpoint: </label></td><td><input type=\"number\" step=\"0.1\" min=\"0\" max=\"100\" name='setpoint' value=\"";
-  message += divide_100(setpoint);
+  message += divide_100(g_settings.setpoint);
   message += "\"></td><td></td>\n";
   message += "<td><label>Current temperature: </label></td><td><input type=\"number\" readonly value=\"";
   message += divide_100(currentTemp);
   message += "\"></td></tr>\n";
 
   message += "  <tr><td><label>Hysteresis: </label></td><td><input type=\"number\" name='hysteresis' step=\"0.1\" min=\"0\" max=\"9.9\" value=\"";
-  message += divide_100(hysteresis);
+  message += divide_100(g_settings.hysteresis);
   message += "\"></td><td></td>\n";
   if (getPower()) {
-    if (mode == MODE_COOL) {
+    if (g_settings.mode == MODE_COOL) {
       text += "COOL";
       color += "blue";
-    } else if (mode == MODE_HEAT) {
+    } else if (g_settings.mode == MODE_HEAT) {
       text += "HEAT";
       color += "red";
     }
@@ -124,27 +137,56 @@ void handleRoot() {
 
   message += "  <tr><td><label>Mode: </label></td><td><select name='mode'>\n";
   message += "    <option ";
-  if (mode == MODE_HEAT)
+  if (g_settings.mode == MODE_HEAT)
     message += "selected ";
   message += "value=\"heat\">Heat</option>\n";
   message += "    <option ";
-  if (mode == MODE_COOL)
+  if (g_settings.mode == MODE_COOL)
     message += "selected ";
   message += "value=\"cool\">Cool</option>\n";
   message += "  </select></td></tr>\n";
 
   message += "  <tr><td><label>Compressor Mode: </label></td><td><select name='comp_mode'>\n";
   message += "    <option ";
-  if (comp_mode)
+  if (g_settings.comp_mode)
     message += "selected ";
   message += "value=\"on\">On</option>\n";
   message += "    <option ";
-  if (!comp_mode)
+  if (!g_settings.comp_mode)
     message += "selected ";
   message += "value=\"off\">Off</option>\n";
   message += "  </select></td></tr>\n";
 
   message += "  <tr><td></td><td><input type=\"submit\" value=\"Update\"></td></tr>\n";
+  message += "  </form>\n";
+  message += "  <tr><td>&nbsp;</td></tr>\n";
+
+  message += "  <tr><th colspan=2>Temp Sensors</th></tr>\n";
+  message += "<form method='get' action=''>\n";
+  message += "  <tr><td><label>Main Sensor Addr: </label></td><td>0x";
+  message += String(g_settings.ds_addr[TEMP_MAIN][0], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][1], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][2], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][3], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][4], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][5], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][6], HEX);
+  message += String(g_settings.ds_addr[TEMP_MAIN][7], HEX);
+  message += "    </td></tr>\n";
+
+  message += "  <tr><td><label>Aux Sensor Addr: </label></td><td>0x";
+  message += String(g_settings.ds_addr[TEMP_AUX][0], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][1], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][2], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][3], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][4], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][5], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][6], HEX);
+  message += String(g_settings.ds_addr[TEMP_AUX][7], HEX);
+  message += "    </td></tr>\n";
+
+  message += "  <tr><td></td><td><input type=\"submit\" name=\"ts_action\" value=\"Swap Sensors\"></td></tr>\n";
+  message += "  <tr><td></td><td><input type=\"submit\" name=\"ts_action\" value=\"Clear Sensors\"></td></tr>\n";
   message += "</form\n></table>";
 
   HTTP.send(200, "text/html", message);

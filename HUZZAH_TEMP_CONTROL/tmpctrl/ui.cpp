@@ -12,6 +12,7 @@ extern "C" {
 #include <Adafruit_LEDBackpack.h>
 
 #include "tmpctrl.h"
+#include "ds.h"
 #include "ui.h"
 
 #define UI_NOTHING          0
@@ -113,8 +114,7 @@ static void handleButtonPress(void) {
   buttonEvent = pressed+1;
 }
 
-
-static void updateDisplay(char *data) {
+void updateDisplay(char *data) {
   int led=3;
   int pos=strlen(data)-1;
   bool dot=false;
@@ -132,6 +132,9 @@ static void updateDisplay(char *data) {
     alpha4.writeDigitAscii(led, data[pos], dot);
     dot=false;
   } while ((pos--) && (led--));
+
+  while (led--)
+    alpha4.writeDigitAscii(led, ' ', false);
   alpha4.writeDisplay();
 }
 
@@ -151,7 +154,7 @@ static void handleUIEvent(int event) {
       if (event == SCROLL) {
         os_timer_disarm(&buttonTimer);
         restartIdleTimer();
-        setpoint += 2 * scrollDelta;
+        g_settings.setpoint += 2 * scrollDelta;
         break;
       }
     }
@@ -173,8 +176,8 @@ static void handleUIEvent(int event) {
 
       if (currentMillis - previousMillis >= UI_TOGGLE_MIN_INTERVAL) {
         previousMillis = currentMillis;
-        mode = (mode==MODE_HEAT)?MODE_COOL:MODE_HEAT;
-        updateStatusLED(STATUS_LED, (mode==MODE_HEAT)?RED:BLUE, false);
+        g_settings.mode = (g_settings.mode==MODE_HEAT)?MODE_COOL:MODE_HEAT;
+        updateStatusLED(STATUS_LED, (g_settings.mode==MODE_HEAT)?RED:BLUE, false);
       }  
       restartIdleTimer();
     } else if (event == BUTTON_PRESSED) {
@@ -189,11 +192,11 @@ static void handleUIEvent(int event) {
   case UI_SET_SETPOINT:
     if (event == SCROLL) {
       restartIdleTimer();
-      setpoint += 2 * scrollDelta;
-      if (setpoint < SETPOINT_MIN)
-        setpoint = SETPOINT_MIN;
-      else if (setpoint > SETPOINT_MAX)
-        setpoint = SETPOINT_MAX;
+      g_settings.setpoint += 2 * scrollDelta;
+      if (g_settings.setpoint < SETPOINT_MIN)
+        g_settings.setpoint = SETPOINT_MIN;
+      else if (g_settings.setpoint > SETPOINT_MAX)
+        g_settings.setpoint = SETPOINT_MAX;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
       ui = UI_SET_HYST;
@@ -206,11 +209,11 @@ static void handleUIEvent(int event) {
   case UI_SET_HYST:
     if (event == SCROLL) {
       restartIdleTimer();
-      hysteresis += 2 * scrollDelta;
-      if (hysteresis < HYSTERESIS_MIN)
-        hysteresis = HYSTERESIS_MIN;
-      else if (hysteresis > HYSTERESIS_MAX)
-        hysteresis = HYSTERESIS_MAX;
+      g_settings.hysteresis += 2 * scrollDelta;
+      if (g_settings.hysteresis < HYSTERESIS_MIN)
+        g_settings.hysteresis = HYSTERESIS_MIN;
+      else if (g_settings.hysteresis > HYSTERESIS_MAX)
+        g_settings.hysteresis = HYSTERESIS_MAX;
     } else if (event == BUTTON_PRESSED) {
       restartIdleTimer();
       ui = UI_SET_COMP;
@@ -227,7 +230,7 @@ static void handleUIEvent(int event) {
 
       if (currentMillis - previousMillis >= UI_TOGGLE_MIN_INTERVAL) {
         previousMillis = currentMillis;
-        comp_mode = !comp_mode;
+        g_settings.comp_mode = !g_settings.comp_mode;
       }
       restartIdleTimer();
     } else if (event == BUTTON_PRESSED) {
@@ -248,19 +251,19 @@ static void handleUIEvent(int event) {
     snprintf(ui_string, 9, "%s", divide_100(currentTemp));
     break;
   case UI_IDLE_SHOW_SETPOINT:
-    snprintf(ui_string, 9, "%s", divide_100(setpoint));
+    snprintf(ui_string, 9, "%s", divide_100(g_settings.setpoint));
     break;
   case UI_SET_MODE:
-    snprintf(ui_string, 9, "%s", (mode==MODE_HEAT)?"HEAT":"COOL");
+    snprintf(ui_string, 9, "%s", (g_settings.mode==MODE_HEAT)?"HEAT":"COOL");
     break;
   case UI_SET_SETPOINT:
-    snprintf(ui_string, 9, "%s", divide_100(setpoint));
+    snprintf(ui_string, 9, "%s", divide_100(g_settings.setpoint));
     break;
   case UI_SET_HYST:
-    snprintf(ui_string, 9, "H %s", divide_100(hysteresis));
+    snprintf(ui_string, 9, "H %s", divide_100(g_settings.hysteresis));
     break;
   case UI_SET_COMP:
-    snprintf(ui_string, 9, "%s", comp_mode?"COMP":" REG");
+    snprintf(ui_string, 9, "%s", g_settings.comp_mode?"COMP":" REG");
     break;
   default:
     snprintf(ui_string, 9, "???");
@@ -312,6 +315,31 @@ void uiSetup() {
   attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonPress, CHANGE);
 }
 
+void uiWaitForTempSensor(void) {
+  int i = 0;
+  updateStatusLED(STATUS_LED, ORANGE, true);
+  while (!ds_setup() || !ds_is_present(TEMP_MAIN)) {
+    if (i%4 == 0 )
+      updateDisplay(" NO ");
+    else if (i%4 == 1)
+      updateDisplay("TEMP");
+    else if (i%4 == 2)
+       updateDisplay("SNSR");
+    else if (i%4 == 3)
+       updateDisplay("    ");
+    delay(1000);
+    i++;
+  }
+  updateStatusLED(STATUS_LED, (g_settings.mode==MODE_HEAT)?RED:BLUE, false);
+  handleUIEvent(UI_NOTHING);
+}
+
+void uiShowReset(void) {
+  updateStatusLED(STATUS_LED, RED, true);
+  updateDisplay("RSET");
+  handleUIEvent(UI_NOTHING);
+}
+
 void uiLoop() {
 
   long newKnob;
@@ -327,5 +355,4 @@ void uiLoop() {
     buttonEvent=0;
   } else
     handleUIEvent(UI_NOTHING);
-  
 }

@@ -10,8 +10,7 @@ Components
   * [FeatherWing Power Relay](https://www.adafruit.com/products/3191) Rated for 10A.  Will work for resistive heaters, but probably not enough for a compressor based cooling system.
   * [Quad Alphanumeric display](https://www.adafruit.com/products/3128) Used for UI.  Uses 3V (about 80mA).  Communicates on I2C (GPIO 4/5) at address 0x70.
   * [Rotary encoder w/push button](https://www.adafruit.com/products/377) Drives the UI.
-  * [Diffused 5mm NeoPixel](https://www.adafruit.com/products/1938) 2 Status LEDs.
-  * [TMP36] (https://www.adafruit.com/products/165) Temp sensor support.  Allows sensor to be shared with BeerBug.  1C accuracy
+  * [Diffused 5mm NeoPixel](https://www.adafruit.com/products/1938) 3 Status LEDs.
   * [DS18B20](https://www.adafruit.com/product/381) temp sensor support.  0.5C accuarcy
   * [FeatherWing Proto board](https://www.adafruit.com/products/2884) Gives some space to wire up all the external devices.
   * Misc: [stacking headers](https://www.adafruit.com/products/2830), [case](https://www.amazon.com/gp/product/B0002BSRIO/ref=oh_aui_detailpage_o02_s00?ie=UTF8&psc=1), outlet
@@ -29,6 +28,7 @@ need to [install the following libraries](https://www.arduino.cc/en/Guide/Librar
    * ESP8266SSDP
    * [Encoder](http://www.pjrc.com/teensy/td_libs_Encoder.html)
    * [OneWire](http://www.pjrc.com/teensy/td_libs_OneWire.html)
+   * [Dallas Temperature](https://github.com/milesburton/Arduino-Temperature-Control-Library)
    * [Time](http://playground.arduino.cc/code/time)
    * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
    * [PubSubClient](http://pubsubclient.knolleary.net/)
@@ -46,6 +46,19 @@ The Wifi and MQTT data is hardcoded in the build.  You must edit the [credential
 file to your approriate values.
 
 Click the 'Verify' button to build the code.  Click the 'Upload' button to reflash the board.
+
+=======
+##Assemble Hardware
+
+The [Huzzah](https://www.adafruit.com/products/2821), [Power Relay](https://www.adafruit.com/products/3191), and [Quad Alphanumeric display](https://www.adafruit.com/products/3128) simply stack on top of each other with the display on top.
+
+
+The [Power Relay](https://www.adafruit.com/products/3191) needs a solder blob placed on pin 15.
+[[https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/relay_feather.png]]
+
+
+The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  The easiest way to do this is with a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary diagram of how to wire them up:
+[[https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/wiring.png]]
 
 =======
 ##UI Definition
@@ -76,6 +89,7 @@ Click the 'Verify' button to build the code.  Click the 'Upload' button to refla
 
 ###Status LED
   * off          - Starting up
+  * flashing orange - Error state: No main temp sensor
   * solid red    - Running in heat mode
   * solid blue   - Running in cool mode
 

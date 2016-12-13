@@ -17,3 +17,5 @@ char *uiToString(void);
 void updateStatusLED(uint8_t led, uint32_t rgb_color, bool blink);
 void uiSetup(void);
 void uiLoop(void);
+void uiWaitForTempSensor(void);
+void uiShowReset(void);

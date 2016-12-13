@@ -7,7 +7,7 @@ typedef enum {
 #define digital_temp  2  /* also blue led */
 #define disp_sda      4
 #define disp_scl      5
-#define neoPixelPin   12 /* untested here; tested on 12*/
+#define neoPixelPin   12
 #define rotary1Pin    13
 #define rotary2pin    14
 #define relayPin      15  /* bootmode pin has pulldown */
@@ -24,9 +24,16 @@ typedef enum {
 
 extern int16_t currentTemp;
 extern int16_t setpoint;
-extern temp_mode mode;
-extern int16_t hysteresis;
-extern bool comp_mode;
 extern bool full_status;
+
+typedef struct {
+  int16_t setpoint;
+  temp_mode mode;
+  int16_t hysteresis;
+  bool comp_mode;
+  byte ds_addr[2][8];
+} settings;
+
+extern settings g_settings;
 
 bool getPower(void);

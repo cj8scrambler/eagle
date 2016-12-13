@@ -102,25 +102,25 @@ static void callback(char* topic, byte* payload, unsigned int length) {
 //  Serial.println(value);
 
   if (keyname == "new_mode") {
-    mode = value.toInt() ? MODE_COOL:MODE_HEAT;
+    g_settings.mode = value.toInt() ? MODE_COOL:MODE_HEAT;
     Serial.print("Updated MODE to: ");
-    Serial.println(mode);
+    Serial.println(g_settings.mode);
   }  else if (keyname == "new_compmode") {
-    comp_mode = value.toInt();
+    g_settings.comp_mode = value.toInt();
     Serial.print("Updated COMPRESSOR MODE to: ");
-    Serial.println(comp_mode);
+    Serial.println(g_settings.comp_mode);
   }  else if (keyname == "full_status") {
     full_status = value.toInt();
     Serial.print("Force full status update");
     Serial.println(full_status);
   }  else if (keyname == "new_setpoint") {
-    setpoint = value.toInt();
+    g_settings.setpoint = value.toInt();
     Serial.print("Updated setpoint to: ");
-    Serial.println(setpoint);
+    Serial.println(g_settings.setpoint);
   }  else if (keyname == "new_hyst") {
-    hysteresis = value.toInt();
+    g_settings.hysteresis = value.toInt();
     Serial.print("Updated hysteresis to: ");
-    Serial.println(hysteresis);
+    Serial.println(g_settings.hysteresis);
   }
  
 }
