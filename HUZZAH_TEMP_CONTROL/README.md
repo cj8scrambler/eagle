@@ -54,11 +54,11 @@ The [Huzzah](https://www.adafruit.com/products/2821), [Power Relay](https://www.
 
 
 The [Power Relay](https://www.adafruit.com/products/3191) needs a solder blob placed on pin 15.
-[[https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/relay_feather.png]]
+![feather setup](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/relay_feather.png)
 
 
 The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  The easiest way to do this is with a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary diagram of how to wire them up:
-[[https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/wiring.png]]
+![huzzah wiriing](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/wiring.png)
 
 =======
 ##UI Definition
