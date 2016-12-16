@@ -57,10 +57,11 @@ The [Power Relay](https://www.adafruit.com/products/3191) needs a solder blob pl
 ![feather setup](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/relay_feather.png)
 
 
-The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  I've made a custom feather board which provides a simple way to wire these up.  [![Order from OSH Park](https://oshpark.com/assets/badge-5b7ec47045b78aef6eb9d83b3bac6b1920de805e9a0c227658eac6e19a045b9c.png)](https://oshpark.com/shared_projects/WBo4cvpj)
+The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  I've made a custom feather board which provides a simple way to wire these up.  The board can be ordered directly from [OSHpark](https://oshpark.com/shared_projects/hU0rAOLt).
+![Accy Feather](https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/c710df422663d41e89e7bcd539f0a0a5.png)
 
 
-If you want to wire it up manually instead, you could use a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary wiring diagram:
+If you want to wire it up manually instead of using the accessory feather above, you could use a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary wiring diagram:
 ![huzzah wiriing](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/wiring.png)
 
 =======
