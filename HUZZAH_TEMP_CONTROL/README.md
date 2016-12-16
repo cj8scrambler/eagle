@@ -1,5 +1,5 @@
-##Huzzah based temp controller with wifi
 =======
+##Huzzah based temp controller with wifi
 
 This project is a Huzzah Feather based temperature controller with wifi
 network access for remote configuration and data logging.  It's built using
@@ -21,7 +21,7 @@ Components
 The Arduino IDE is used to build and flash the board.  In order to build the code, you'll
 need to [install the following libraries](https://www.arduino.cc/en/Guide/Libraries):
 
-###Standard Libraries
+####Standard Libraries
    * ESP8266 Board package from: http://arduino.esp8266.com/stable/package_esp8266com_index.json
    * ESP8266WiFi
    * ESP8266WebServer
@@ -33,7 +33,7 @@ need to [install the following libraries](https://www.arduino.cc/en/Guide/Librar
    * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
    * [PubSubClient](http://pubsubclient.knolleary.net/)
 
-###[User installed libraries](https://learn.adafruit.com/adafruit-all-about-arduino-libraries-install-use/how-to-install-a-library)
+####[User installed libraries](https://learn.adafruit.com/adafruit-all-about-arduino-libraries-install-use/how-to-install-a-library)
    * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
    * [Adafruit LEDBackpack](https://github.com/adafruit/Adafruit_LED_Backpack)
    * [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library)
@@ -57,7 +57,10 @@ The [Power Relay](https://www.adafruit.com/products/3191) needs a solder blob pl
 ![feather setup](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/relay_feather.png)
 
 
-The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  The easiest way to do this is with a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary diagram of how to wire them up:
+The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  I've made a custom feather board which provides a simple way to wire these up.  [![Order from OSH Park](https://oshpark.com/assets/badge-5b7ec47045b78aef6eb9d83b3bac6b1920de805e9a0c227658eac6e19a045b9c.png)](https://oshpark.com/shared_projects/WBo4cvpj)
+
+
+If you want to wire it up manually instead, you could use a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary wiring diagram:
 ![huzzah wiriing](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/wiring.png)
 
 =======
