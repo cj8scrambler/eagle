@@ -12,35 +12,44 @@ Components
   * [Rotary encoder w/push button](https://www.adafruit.com/products/377) Drives the UI.
   * [Diffused 5mm NeoPixel](https://www.adafruit.com/products/1938) 3 Status LEDs.
   * [DS18B20](https://www.adafruit.com/product/381) temp sensor support.  0.5C accuarcy
-  * [FeatherWing Proto board](https://www.adafruit.com/products/2884) Gives some space to wire up all the external devices.
+  * Either my custom [wiring board](https://oshpark.com/shared_projects/hU0rAOLt) or a [FeatherWing Proto board](https://www.adafruit.com/products/2884) Gives some space to wire up all the external devices.
   * Misc: [stacking headers](https://www.adafruit.com/products/2830), [case](https://www.amazon.com/gp/product/B0002BSRIO/ref=oh_aui_detailpage_o02_s00?ie=UTF8&psc=1), outlet
 
 =======
 ##Build and Flash
 
 The Arduino IDE is used to build and flash the board.  In order to build the code, you'll
-need to [install the following libraries](https://www.arduino.cc/en/Guide/Libraries):
+need to the following setup:
+
+####ESP8266 Board Support Package
+   * Open Arduino Preferences
+   * At **Addtional Board Manager URLs** add: from: http://arduino.esp8266.com/stable/package_esp8266com_index.json
+   * Close Preferences
+   * Go to **Tools->Board->Board Manager**
+   * Install "esp8266 by ESP8266 Community"
+   * Set the board type **Tools->Board:** to "Adafruit HUZZAH ESP8266"
+   * Set **Tools->Upload Speed** to 921600.  This greatly improves code download time.  If code downloads fail often, try falling back to the slower 115200 speed here.
+
+####Serial port setup
+   * Install the [USB serial driver](https://www.silabs.com/products/mcu/Pages/USBtoUARTBridgeVCPDrivers.aspx)
+   * Connect a USB cable to the board.  Set the **Tools->Port** to the newly enumerated serial interface.
 
 ####Standard Libraries
-   * ESP8266 Board package from: http://arduino.esp8266.com/stable/package_esp8266com_index.json
-   * ESP8266WiFi
-   * ESP8266WebServer
-   * ESP8266SSDP
-   * [Encoder](http://www.pjrc.com/teensy/td_libs_Encoder.html)
-   * [OneWire](http://www.pjrc.com/teensy/td_libs_OneWire.html)
-   * [Dallas Temperature](https://github.com/milesburton/Arduino-Temperature-Control-Library)
-   * [Time](http://playground.arduino.cc/code/time)
-   * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
-   * [PubSubClient](http://pubsubclient.knolleary.net/)
+   * Go to **Sketch->Include Library->Manage Libraries** and install the following libraries
+      * [Encoder by Paull Stroffrgen](http://www.pjrc.com/teensy/td_libs_Encoder.html)
+      * [OneWire](http://www.pjrc.com/teensy/td_libs_OneWire.html)
+      * [Dallas Temperature](https://github.com/milesburton/Arduino-Temperature-Control-Library)
+      * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
+      * [PubSubClient](http://pubsubclient.knolleary.net/)
+      * [Time](http://playground.arduino.cc/code/time) (search for timekeeping in Adruino library manager)
+      * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
+      * [Adafruit LED Backpack Library](https://github.com/adafruit/Adafruit_LED_Backpack)
+      * [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library)
+
 
 ####[User installed libraries](https://learn.adafruit.com/adafruit-all-about-arduino-libraries-install-use/how-to-install-a-library)
-   * [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel)
-   * [Adafruit LEDBackpack](https://github.com/adafruit/Adafruit_LED_Backpack)
-   * [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library)
 
-Set the board type **Tools->Board:** to "Adafruit HUZZAH ESP8266".  If this choice doesn't exist, make sure you've installed the ESP8266 Board Package (above).
-
-Connect a USB cable to the board.  Set the **Tools->Port** to the newly enumerated serial interface.
+Open **HUZZAH_TEMP_CONTROL/tmpctrl/tmpctrl.ino** in Arduino.
 
 The Wifi and MQTT data is hardcoded in the build.  You must edit the [credentials.h] (https://github.com/cj8scrambler/eagle/blob/master/HUZZAH_TEMP_CONTROL/tmpctrl/credentials.h)
 file to your approriate values.
