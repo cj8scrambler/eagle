@@ -62,7 +62,7 @@ Click the 'Verify' button to build the code.  Click the 'Upload' button to refla
 The [Huzzah](https://www.adafruit.com/products/2821), custom interface board and [Quad Alphanumeric display](https://www.adafruit.com/products/3128) simply stack on top of each other with the display on top.
 
 The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  I've made a custom feather board which provides a simple way to wire these up.  It also provides an option for a small on-board relay, or a header to wire up an external solid state relay.  The board can be ordered directly from [OSHpark](https://oshpark.com/shared_projects/7Zi1G63f).
-[Accy Feather](https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/14139594cbb9190dfa5511dba4859ab6.png)
+![Accy Feather](https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/14139594cbb9190dfa5511dba4859ab6.png)
 
 
 =======
