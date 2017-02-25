@@ -7,19 +7,21 @@ off the shelf components from Adafruit.
 
 Components
   * [Huzzah feather board](https://www.adafruit.com/products/2821) Includes WiFi.
-  * [FeatherWing Power Relay](https://www.adafruit.com/products/3191) Rated for 10A.  Will work for resistive heaters, but probably not enough for a compressor based cooling system.
   * [Quad Alphanumeric display](https://www.adafruit.com/products/3128) Used for UI.  Uses 3V (about 80mA).  Communicates on I2C (GPIO 4/5) at address 0x70.
   * [Rotary encoder w/push button](https://www.adafruit.com/products/377) Drives the UI.
   * [Diffused 5mm NeoPixel](https://www.adafruit.com/products/1938) 3 Status LEDs.
   * [DS18B20](https://www.adafruit.com/product/381) temp sensor support.  0.5C accuarcy
-  * Either my custom [wiring board](https://oshpark.com/shared_projects/hU0rAOLt) or a [FeatherWing Proto board](https://www.adafruit.com/products/2884) Gives some space to wire up all the external devices.
+  * My custom [wiring board](https://oshpark.com/shared_projects/7Zi1G63f) to wire up everything.
   * Misc: [stacking headers](https://www.adafruit.com/products/2830), [case](https://www.amazon.com/gp/product/B0002BSRIO/ref=oh_aui_detailpage_o02_s00?ie=UTF8&psc=1), outlet
 
 =======
 ##Build and Flash
 
-The Arduino IDE is used to build and flash the board.  In order to build the code, you'll
-need to the following setup:
+The Arduino IDE is used to build and flash the board.  First install the IDE:
+
+   [Arduino IDE](https://www.arduino.cc/en/Main/Software) - Available for Mac, Linux or Windows.
+
+Launch the Arduino IDE and configure the following:
 
 ####ESP8266 Board Support Package
    * Open Arduino Preferences
@@ -47,8 +49,6 @@ need to the following setup:
       * [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library)
 
 
-####[User installed libraries](https://learn.adafruit.com/adafruit-all-about-arduino-libraries-install-use/how-to-install-a-library)
-
 Open **HUZZAH_TEMP_CONTROL/tmpctrl/tmpctrl.ino** in Arduino.
 
 The Wifi and MQTT data is hardcoded in the build.  You must edit the [credentials.h] (https://github.com/cj8scrambler/eagle/blob/master/HUZZAH_TEMP_CONTROL/tmpctrl/credentials.h)
@@ -59,19 +59,11 @@ Click the 'Verify' button to build the code.  Click the 'Upload' button to refla
 =======
 ##Assemble Hardware
 
-The [Huzzah](https://www.adafruit.com/products/2821), [Power Relay](https://www.adafruit.com/products/3191), and [Quad Alphanumeric display](https://www.adafruit.com/products/3128) simply stack on top of each other with the display on top.
+The [Huzzah](https://www.adafruit.com/products/2821), custom interface board and [Quad Alphanumeric display](https://www.adafruit.com/products/3128) simply stack on top of each other with the display on top.
 
+The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  I've made a custom feather board which provides a simple way to wire these up.  It also provides an option for a small on-board relay, or a header to wire up an external solid state relay.  The board can be ordered directly from [OSHpark](https://oshpark.com/shared_projects/7Zi1G63f).
+[Accy Feather](https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/14139594cbb9190dfa5511dba4859ab6.png)
 
-The [Power Relay](https://www.adafruit.com/products/3191) needs a solder blob placed on pin 15.
-![feather setup](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/relay_feather.png)
-
-
-The [Rotary encoder](https://www.adafruit.com/products/377), [NeoPixels](https://www.adafruit.com/products/1938), and [DS18B20 temp sensors](https://www.adafruit.com/product/381) need to be wired to the board.  I've made a custom feather board which provides a simple way to wire these up.  The board can be ordered directly from [OSHpark](https://oshpark.com/shared_projects/hU0rAOLt).
-![Accy Feather](https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/c710df422663d41e89e7bcd539f0a0a5.png)
-
-
-If you want to wire it up manually instead of using the accessory feather above, you could use a [FeatherWing Proto board](https://www.adafruit.com/products/2884).  Here is a rudimentary wiring diagram:
-![huzzah wiriing](https://raw.githubusercontent.com/cj8scrambler/eagle/master/HUZZAH_TEMP_CONTROL/hw/wiring.png)
 
 =======
 ##UI Definition
