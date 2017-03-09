@@ -353,7 +353,7 @@ void setPower(bool enable) {
   if (g_settings.comp_mode) {
     deltatime = now() - lasttime;
     if (deltatime < MIN_COMPRESSOR_TIME){
-      Serial.println("In compressor mode timeout");
+//      Serial.println("In compressor mode timeout");
       return;
     }
   }
@@ -395,7 +395,6 @@ template <class T> int EEPROM_read(int ee, T& value)
           *p++ = EEPROM.read(ee++);
     return i;
 }
-
 void setup() {
   byte macInt[6];
   String macStr;
@@ -424,6 +423,7 @@ void setup() {
       ESP.restart();
     }
     delay(100);
+
   uiWaitForTempSensor();
 
   Serial.println();
@@ -465,7 +465,6 @@ void loop() {
       auxTemp = auxTempRA.getAverage();
     }
     start_temp_reading();
-
   }
 
   trippoint = getTrippoint();
@@ -487,12 +486,15 @@ void loop() {
   uiLoop();
 
   if (!checkWifi()) {
+    /* todo: re-establish NTP if needed */
     mqtt_loop();
     uploadCloudData();
     loopHTTP();
   }
 
-  if (memcmp(&old_settings, &g_settings, sizeof(g_settings))) {
+  if (uiIsIdleState() &&
+      (memcmp(&old_settings, &g_settings, sizeof(g_settings)))) {
+    updateStatusLED(STATUS_LED, (g_settings.mode==MODE_HEAT)?RED:BLUE, false);
     Serial.println("Saving settings to EEPROM.");
     EEPROM_write(0, g_settings);
     memcpy(&old_settings, &g_settings, sizeof(g_settings));

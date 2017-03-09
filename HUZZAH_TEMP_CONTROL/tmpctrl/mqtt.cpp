@@ -47,7 +47,7 @@ void mqtt_addValue(String key, int value, time_t time) {
 /*
  * The _rawStr version takes a string argument for value, but passes it as
  * a native JSON type (without quotes).  This allows for strings like
- * "98.4" to be passed up as a native data type without float support. 
+ * "98.4" to be passed up as a native data type without float support.
  */
 void mqtt_addValue_rawStr(String key, String value) {
     if (cont == 0) msg += "{\"keyname\":\""+key+"\",\"value\":"+value+"}";
@@ -122,7 +122,7 @@ static void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print("Updated hysteresis to: ");
     Serial.println(g_settings.hysteresis);
   }
- 
+
 }
 
 void mqtt_setup(uint32_t uniqueId) {
@@ -132,16 +132,32 @@ void mqtt_setup(uint32_t uniqueId) {
 }
 
 static int reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (client.connect("ThermSwitch", mqttUser, mqttPasswd)) {
-      Serial.println("connected");
-      client.subscribe((char*)topic.c_str());
+  /* Works out to about 1 minute */
+  #define MAX_BACKOFF (1<<15)
+
+  static int backoff=1, tries=0;
+
+  if (!client.connected()) {
+    if (++tries >= backoff) {
+      Serial.print("Attempting MQTT connection...");
+      // Attempt to connect
+      if (client.connect("ThermSwitch", mqttUser, mqttPasswd)) {
+        Serial.println("connected");
+        client.subscribe((char*)topic.c_str());
+        backoff=1;
+        tries=0;
+      } else {
+        Serial.print("failed, rc=");
+        Serial.println(client.state());
+        tries=0;
+        if (backoff <= (MAX_BACKOFF/2)) {
+          backoff *= 2;
+          Serial.print("Go to backoff=");
+          Serial.println(backoff);
+        }
+        return -1;
+      }
     } else {
-      Serial.print("failed, rc=");
-      Serial.println(client.state());
       return -1;
     }
   }
@@ -149,7 +165,6 @@ static int reconnect() {
 }
 
 void mqtt_loop() {
-
   if (!client.connected()) {
     if (reconnect()) {
       return;

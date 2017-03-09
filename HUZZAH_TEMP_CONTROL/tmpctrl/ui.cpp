@@ -54,8 +54,8 @@ static os_timer_t idleTimer;
 
 static led ledData[NUM_LEDS];
 
-static Encoder knob(rotary1Pin,rotary2pin);
-static Adafruit_NeoPixel statusLEDs = Adafruit_NeoPixel(NUM_LEDS, neoPixelPin, NEO_GRB + NEO_KHZ800);
+static Encoder knob(rotary1Pin,rotary2Pin);
+static Adafruit_NeoPixel statusLEDs = Adafruit_NeoPixel(NUM_LEDS, neoPixelPin, NEO_RGB + NEO_KHZ800);
 static Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
 
 static void handleUIEvent(int event);
@@ -136,6 +136,10 @@ void updateDisplay(char *data) {
   while (led--)
     alpha4.writeDigitAscii(led, ' ', false);
   alpha4.writeDisplay();
+}
+
+bool uiIsIdleState(void) {
+  return (ui==UI_IDLE);
 }
 
 static void handleUIEvent(int event) {
@@ -288,9 +292,10 @@ char *divide_100(int16_t value)
 }
 
 void updateStatusLED(uint8_t led, uint32_t rgb_color, bool blink){
-  ledData[led].red = (rgb_color && 0xFF0000) >> 4;
-  ledData[led].green = (rgb_color && 0x00FF00) >> 2;
-  ledData[led].blue = (rgb_color && 0x0000FF);
+  /* Everything is shifted an extra bit to halve the brightness */
+  ledData[led].red = (rgb_color & 0xFF0000) >> 16;
+  ledData[led].green = (rgb_color & 0x00FF00) >> 8;
+  ledData[led].blue = (rgb_color & 0x0000FF) >> 0;
   ledData[led].blink = blink;
 }
 

@@ -8,8 +8,8 @@ typedef enum {
 #define disp_sda      4
 #define disp_scl      5
 #define neoPixelPin   12
-#define rotary1Pin    13
-#define rotary2pin    14
+#define rotary2Pin    13
+#define rotary1Pin    14
 #define relayPin      15  /* bootmode pin has pulldown */
 
 #define TEMP_SAMPLE_INTERVAL    2000  /* ms */
