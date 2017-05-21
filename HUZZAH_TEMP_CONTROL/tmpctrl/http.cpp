@@ -185,8 +185,8 @@ Serial.println(ts_action);
   message += String(g_settings.ds_addr[TEMP_AUX][7], HEX);
   message += "    </td></tr>\n";
 
-  message += "  <tr><td></td><td><input type=\"submit\" name=\"ts_action\" value=\"Swap Sensors\"></td></tr>\n";
-  message += "  <tr><td></td><td><input type=\"submit\" name=\"ts_action\" value=\"Clear Sensors\"></td></tr>\n";
+  message += "  <tr><td></td><td><input type=\"submit\" name=\"ts_action\" value=\"Swap\" label=\"Swap Sensors\"></td></tr>\n";
+  message += "  <tr><td></td><td><input type=\"submit\" name=\"ts_action\" value=\"Clear\" label=\"Remove Sensors\"></td></tr>\n";
   message += "</form\n></table>";
 
   HTTP.send(200, "text/html", message);

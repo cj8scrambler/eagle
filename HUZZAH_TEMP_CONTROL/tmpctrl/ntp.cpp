@@ -36,7 +36,7 @@ void ntpSetup(void)
   }
   Udp.begin(localPort);
   setSyncProvider(getNtpTime);
-  setSyncInterval(300);
+  setSyncInterval(30);
 }
 
 const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message

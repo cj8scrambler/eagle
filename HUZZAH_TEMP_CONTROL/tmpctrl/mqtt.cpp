@@ -133,7 +133,7 @@ void mqtt_setup(uint32_t uniqueId) {
 
 static int reconnect() {
   /* Works out to about 1 minute */
-  #define MAX_BACKOFF (1<<15)
+  #define MAX_BACKOFF (1<<16)
 
   static int backoff=1, tries=0;
 

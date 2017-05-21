@@ -282,10 +282,10 @@ void logDatapoint() {
       writeIndex = (writeIndex + 1) % NUM_DATA_SAMPLES;
       if (writeIndex == readIndex)
         readIndex = (readIndex + 1) % NUM_DATA_SAMPLES;
-      Serial.print("New aux temperature data (");
-      Serial.print(divide_100(new_auxtemp));
-      Serial.print(") logged at ");
-      Serial.println(now());
+//      Serial.print("New aux temperature data (");
+//      Serial.print(divide_100(new_auxtemp));
+//      Serial.print(") logged at ");
+//      Serial.println(now());
     }
 
     if (new_setpoint != old_setpoint || full_status) {
@@ -405,7 +405,6 @@ void setup() {
   delay(100);
   Serial.println("");
 
-  pinMode(relayPin, OUTPUT);
   digitalWrite(relayPin, 0);
 
   EEPROM.begin(512);
@@ -413,6 +412,20 @@ void setup() {
   memcpy(&old_settings, &g_settings, sizeof(g_settings));
 
   uiSetup();
+
+while (1) {
+  Serial.println("Off");
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, 0);
+  updateStatusLED(STATUS_LED, BLACK, false);
+  delay(500);
+  Serial.println("On");
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, 1);
+  updateStatusLED(STATUS_LED, WHITE, false);
+  delay(500);
+}
+
 
   while (!digitalRead(buttonPin))
     if (i++ == 50) {
@@ -461,7 +474,7 @@ void loop() {
     currentTemp = curTempRA.getAverage();
 
     if(ds_is_present(TEMP_AUX)) {
-      curTempRA.addValue(get_temp(TEMP_AUX));
+      auxTempRA.addValue(get_temp(TEMP_AUX));
       auxTemp = auxTempRA.getAverage();
     }
     start_temp_reading();
